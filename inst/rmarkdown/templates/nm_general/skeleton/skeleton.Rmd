@@ -1,0 +1,31 @@
+---
+title: "title"
+author: "`r Sys.info()['user']`"
+date: "`r Sys.time()`"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+```{r setup, include=F}
+## DO NOT MODIFY THIS BLOCK (unless you know what you're doing)
+library(knitr)
+library(rprojroot)
+opts_knit$set(root.dir = find_root(has_file(".Rprofile") | 
+                                     is_rstudio_project | 
+                                     is_r_package | 
+                                     is_git_root))
+opts_chunk$set(echo = TRUE)
+opts_chunk$set(message = TRUE)
+```
+
+```{r echo=FALSE,message=FALSE}
+## LOAD PACKAGES HERE
+library(NMproject)
+
+devtools::load_all() ## for loading functions in R/
+
+```
+

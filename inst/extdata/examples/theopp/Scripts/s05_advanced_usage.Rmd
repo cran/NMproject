@@ -1,0 +1,226 @@
+---
+title: "Advanced usage"
+author: "`r Sys.info()['user']`"
+date: "`r Sys.time()`"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+```{r setup, include=F}
+## DO NOT MODIFY THIS BLOCK (unless you know what you're doing)
+library(knitr)
+library(rprojroot)
+opts_knit$set(root.dir = find_root(has_file(".Rprofile") | 
+                                     is_rstudio_project | 
+                                     is_r_package | 
+                                     is_git_root))
+opts_chunk$set(echo = TRUE)
+opts_chunk$set(message = TRUE)
+```
+
+```{r echo=FALSE,message=FALSE}
+## LOAD PACKAGES HERE
+library(NMproject)
+library(dplyr)
+
+```
+
+```{r}
+
+m1 <- readRDS("Results/m1.RDS")
+
+```
+
+### Setting initial estimates
+
+You've already seen how setting an `init` vector allows setting of values,  We can also give named vectors like so:
+
+```{r}
+
+m1 <- m1 %>% init_theta(init = c(KA = 1), 
+                        FIX = c(KA = TRUE))
+
+m1 %>% dollar("THETA")
+
+```
+
+
+```{r}
+
+## return a tibble version of $OMEGA with init_omega()
+io <- m1 %>% init_omega()
+io 
+
+# this can then be manipulated (note that io is a list of a data.frame) and put
+# back into the object m1 with: 
+
+# m1 <- m1 %>% init_omega(io) 
+
+# see next chunk
+
+```
+
+```{r}
+
+## here we will manipulate io with the ready made block() function
+## this constructs
+io <- io %>% block(c(2,3))  ## make block out ETA 2 and 3
+## put modified io wit
+m1 <- m1 %>% init_omega(io)
+m1 %>% dollar("OMEGA")
+
+```
+
+```{r}
+
+## for demo purposes we'll reverse the process with unblock()
+io <- m1 %>% init_omega()
+io <- io %>% unblock(c(2,3))
+m1 <- m1 %>% init_omega(io)
+m1 %>% dollar("OMEGA")
+
+```
+
+### Perturbing initial parameters
+
+To modify initial estimates, we'll use the `mutate`-like behaviour of `init_*` functions.  We will modify the `init` by referencing itself.  We'll modified all our fixed effects (log transformed) by 30%
+
+```{r}
+
+m1 %>% dollar("THETA")
+m1 <- m1 %>% init_theta(init = rnorm(init, mean = init, sd = 0.3))
+m1 %>% dollar("THETA")
+
+```
+
+As a more advanced exercise, lets create 5 runs with modified initial estimates by combining the above with `dplyr::mutate()`
+
+```{r}
+
+dp <- tibble(rep = 1:5) %>%
+  mutate(
+    m = m1 %>% ## start with single parent run, m1, an nm object of length 1
+      child(run_id = rep) %>% ## rep is vector of length 5
+      ## this makes the child() output a nm object vector of length 5 - each with a unique run_id
+      ## do the same manipulation above - since NMproject functiosn are
+      ## vectorized, this will apply the same manipulation elementwise
+      init_theta(init = rnorm(init, mean = init, sd = 0.3))
+  )
+
+## the m column of dp is a nm object vector, display all $THETAs like this
+dp$m %>% dollar("THETA")
+
+## run this with 
+# dp$m %>% run_nm()
+
+```
+
+### Automating model checking
+
+We'll use a similar combination of nm object vectorized and `dplyr` the previous section to test multiple model structures in one go using the `subroutine()` control file manipulation function.  `.available_advans` shows all available advans.
+
+```{r advan_test}
+
+## discard previous changes to m1 by reloading
+m1 <- readRDS("Results/m1.RDS")
+
+.available_advans ## display available advans
+
+dt <- .available_advans %>%
+  ## filter only for oral dosing advans
+  filter(oral %in% TRUE) %>%
+  ## mutate state create a column vector m of nm objects
+  ## first step is to create children runs from the parent object m1
+  ## this is done by supplying a vector of run_ids to the child() function
+  mutate(m = m1 %>% ## start with parent m1 again
+           child(run_id = label) %>% ## create multiple children using "label" column
+           ## then use advan and trans columns with subroutine()
+           subroutine(advan = advan, trans = trans))
+
+## view the $PK blocks of each
+dt$m %>% dollar("PK")
+
+## run them all and wait for them to finish
+dt$m %>% run_nm() %>% wait_finish()
+
+summary_wide(dt$m)
+
+#dt$m %>% 
+#  subset(ofv(.) < 120) %>%
+#  nm_render("Scripts/basic_gof.Rmd")
+
+
+```
+
+Often you'll want to know the right level of parallelisation to run your model to maximise speed without wasting too many resources.  The following uses the vectorized nm objects in a similar way with `dplyr::mutate()` to create multiple runes with different levels of parallelisation. For the demo we'll just test it across 1, 2 and 3 cores, but this can be an arbitrary vector.
+
+```{r core_test}
+
+dc <- tibble::tibble(cores = c(1, 2, 3)) %>%  ## only 3 different values to test for demo purposes
+  mutate(m = m1 %>% ## start with parent m1 again
+           ## supply the "cores" vector (of the tibble) to child(), this will create 3 runs
+           child(run_id = cores) %>%
+           ## run them all in m1_coretest
+           run_in("Models/m1_coretest") %>%
+           ## run them all with the following execute command
+           cmd("execute {ctl_name} -parafile={parafile} -dir={run_dir} -nodes={cores}") %>%
+           ## and the following parafile
+           parafile("/opt/NONMEM/nm75/run/mpilinux8.pnm") %>%
+           ## and finally set the cores to the "cores" vector
+           cores(cores))
+
+## run them all and wait for them to finish
+dc$m %>% run_nm() %>% wait_finish()
+
+## following is disabled for the demo
+# job_info(dc$m)
+
+## plot cores vs Rtime or Ttime to get plots of run time and total time vs number of CPUs
+## This
+
+```
+
+You can also use the vectorized nature to create a simulation re-estimation routines from scratch.
+
+```{r sim_reest}
+
+## whenever making a routine that will scale up to 100s or 1000s or runs, always start with 1 or 2 replicates.  Get the code working below, and then rerun with desired number of replicates (here we're just using 3 for demo purposes).  You will not waste time because run_nm() will skip over runs that have already completed. 
+n_sims <- 3  
+
+dsr <- tibble(sim = 1:n_sims) %>%
+  mutate(
+    msim = m1 %>%              ## start with single parent run, m1, an nm object of length 1
+      update_parameters() %>%  ## update inits to finals, here nm object is still length 1
+      child(run_id = sim) %>%  ## at this point it becomes length n_sims
+      run_in("Models/m1_simest") %>% ## this applies the run_in modification to all n_sims runs
+      convert_to_simulation(subpr = 1, seed = sim) ## converts all to simulation
+  )
+
+## run, wait, read results and then write to run_dir paths of simulations
+dsr$msim %>% run_nm() %>% 
+  wait_finish() %>%
+  output_table(only_append = "DV_OUT") %>%
+  write_derived_data(file.path(run_dir_path(dsr$msim), "simdata.csv"))
+
+## Now create mest column
+dsr <- dsr %>%
+  mutate(
+    mest = m1 %>% child(run_id = sim) %>%  ## estimations derived from m1
+      run_in("Models/m1_simest/est") %>%   ## run in a new subdirectory
+      data_path(file.path(run_dir_path(msim), "simdata.csv")) %>%    ## set new data_paths
+      ## refill $INPUT. Rename DV to be DV_OUT column. Run nm_diff() command below to see
+      ## what has changed
+      fill_input(rename = list("DV_OBS" = "DV", "DV" = "DV_OUT"))
+  )
+
+# nm_diff(dsr$mest[1])
+
+dsr$mest %>% run_nm() %>% 
+  wait_finish() %>%
+  summary_wide(parameters = "all")
+
+```
+

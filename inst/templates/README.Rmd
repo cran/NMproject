@@ -1,0 +1,51 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+# {{{ Package }}}
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+## Objective
+
+The goal of {{{ Package }}} is to ...
+
+## Directory structure
+
+- **`r NMproject::nm_default_dir("models")`**: Location of model files (e.g. NONMEM, Stan, ...).
+- **R**: Location of R functions to be loaded with `source()` (or loaded with `devtools::load_all()`).
+- **`r NMproject::nm_default_dir("scripts")`**: Location of Script files for data cleaning, analysis and post-processing.
+- **`r NMproject::nm_default_dir("results")`**: Location of Results files
+- Additional directories are for source datasets (unmodified source data files) and derived datasets (cleaned and analysis-ready datasets)
+
+## Data sources
+
+The data was obtained from ...
+
+<!--
+
+Include links to databases and contact points to ensure this step can be traced.
+
+-->
+
+## Instructions to reproduce analysis
+
+<!-- 
+
+It is recommended to use a package management system (like renv) for all non-exploratory analysis that may need to be reproduced at future dates
+
+-->
+
+## More information
+

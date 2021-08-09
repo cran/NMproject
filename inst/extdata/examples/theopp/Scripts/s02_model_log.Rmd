@@ -1,0 +1,247 @@
+---
+title: "model development"
+author: "`r Sys.info()['user']`"
+date: "`r Sys.time()`"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+
+```{r setup, include=F}
+## DO NOT MODIFY THIS BLOCK (unless you know what you're doing)
+library(knitr)
+library(rprojroot)
+opts_knit$set(root.dir = find_root(has_file(".Rprofile") | 
+                                     is_rstudio_project | 
+                                     is_r_package | 
+                                     is_git_root))
+opts_chunk$set(echo = TRUE)
+opts_chunk$set(message = TRUE)
+```
+
+```{r echo=FALSE,message=FALSE}
+## LOAD PACKAGES HERE
+
+library(NMproject)
+library(dplyr)
+
+# devtools::load_all()
+
+```
+
+## model development
+
+Demo has already copied a control file "ADVAN2.mod" from code library into staging area.
+
+First parent object takes the most effort to get right. Subsequent child runs will inherit characteristics of parents
+
+```{r parent_ob}
+
+m1 <- new_nm(run_id = "m1",
+             based_on = "staging/Models/ADVAN2.mod",
+             data_path = "DerivedData/data.csv") %>%
+  # See all fields by highlighting the command so far (not including the pipe
+  # %>% ) and send it to the console. You can then display m1 so far and see
+  # that the field "ctl_name" is "Models/runm1.mod".  Note that the control file
+  # will not be written to disk until nonmem is ready to run (the run_nm() step
+  # at the end).
+  
+  # cmd sets the psn command that will be used to run NONMEM (i.e. when we run
+  # run_nm()).  Note that the command uses {ctl_name} and {run_dir} which are
+  # placeholders for the ctl_name and run_dir fields of the object (can be
+  # viewed by print the object so far and by using ctl_name(m1) and run_dir(m1)
+  # respectively.
+  cmd("execute {ctl_name} -dir={run_dir}") %>%
+  # view the control file using show_ctl(m1) and note that $DATA has already
+  # been set to the right location, and that $INPUT, $THETA and $SIGMA need
+  # filling in.  We could manually edit this (manual_edit addin), but instead
+  # we'll do this automatically using three functions fill_input(), init_theta()
+  # and init_sigma()
+  fill_input() %>%
+  init_theta(init = c(0.5, -2.5, -0.5)) %>%
+  init_sigma(init = c(0.1, 0.1)) %>%
+  # to check fill_input() and init_*() worked as intended, highlight this entire
+  # code segment and select addins -> nm_diff.  This is sensible practice after
+  # all automatic edits and will display the unix file diff.  Get used to
+  # reading these for a concise description of file changes. Then run nm_tran()
+  # in a similar way via the addins -> nm_tran().
+  run_nm()  # last step is usually to run nonmem.  only at this point will the control file be written to disk.
+
+```
+
+the demo contains a simple post processing template. Generate this from
+scratch by clicking New File -> R markdown -> From template -> basic gof. the
+default template is very minimal but can be customised and reused by following
+instructions
+
+```{r basic_gof}
+
+m1 %>% nm_render("Scripts/basic_gof.Rmd")
+
+```
+
+See the html generated in the "Results" directory (the location can be changed
+and extracted using `results_dir()`)
+
+Let's generate a custom VPC and PPC diagnostic for this run using NMproject's
+built in markdown templates.  These just require a simulation control file of
+the model to be run.
+
+We can do this using the child functionality. We create a new object m1s.
+Start with `m1` and pipe into `child()` function specifying a new run identifier
+(here we use the same "m1s" identifier)
+
+```{r sim}
+
+m1s <- m1 %>% child("m1s") %>%  
+  # update the $THETA/$OMEGA/$SIGMA values using m1
+  update_parameters(m1) %>%
+  # use the convert_to_simulation() function to remove $EST and replace with
+  # $SIM
+  convert_to_simulation(subpr = 10) %>%
+  # before running, check the nm_diff (highlight this entire segment, addins ->
+  # nm_diff) to ensure automatic control file changes modified m1 in the way
+  # intended.
+  run_nm()
+
+```
+
+the following templates come are already save in "Scripts" for the demo, but
+they are available as templates in `new file` -> `R markdown` -> `from templates`
+
+```{r sim_diags}
+ 
+m1s %>% nm_render("Scripts/basic_ppc.Rmd")
+m1s %>% nm_render("Scripts/basic_vpc.Rmd")
+
+```
+
+check "Results to view" and it's good to document your thoughts about how well
+the model evaluation is so others (including your future self) may follow your
+thinking
+
+```{r manual_edit}
+# example manual_edit - no run_nm() because will not run this, it's just to
+# illustrate how code looks after using the manual_edit addin
+
+m1s_temp <- m1 %>% child("m1s_temp") %>%  
+  update_parameters(m1) %>%
+  apply_manual_edit("patch-tarjinde-2021-06-04-17-07-24")
+
+
+# try using nm_diff(m1s_temp, m1s) to see the difference between the two
+# approaches.  Note that since we didn't run_nm(), runm1s_temp.mod was never
+# written to disk. The control file exists only inside the object
+
+```
+
+
+```{r child_obs}
+# m1 will be used in a future script, so we are saving the object in the
+# "Results" directory.  This way it can be reused in other scripts with m1 <-
+# readRDS("Results/m1.RDS") without having to rerun this script.
+
+m1 %>% saveRDS("Results/m1.RDS")
+
+# create a child run where we investigate a different TRANS subroutine
+m2 <- m1 %>% child() %>%
+  subroutine(trans = 2) %>% 
+  # see nm_diff app to see if you're happy with the changes being made
+  run_nm()
+
+
+# similarly, we can add coviarates and do many more types of manipulation
+m2WT <- m2 %>% child("m2WT") %>%
+  add_cov(param = "CL", cov = "WT", state = "linear") %>%
+  run_nm()
+
+# ?see manual_edits to see how the manual_edit app works - it can track and
+# apply manual control files changes you want to make for when wanting to make
+# changes that I haven't made an R function for.  Also check out ?dollar and
+# ?text for how to view and write control file control files as segment or in
+# their entirety.  ?show_ctl is another way.
+
+# uncomment following to do basic gofs for these too:
+
+# c(m2, m2WT) %>% nm_render("Scripts/basic_gof.Rmd")
+
+```
+
+Body weight not signficant.  K parameterisation better than CL in terms of OFV
+
+```{r summary_rr}
+
+summary_long(c(m1, m2, m2WT), parameters = "all")
+rr(c(m2, m2WT))
+
+```
+
+Make a decision point in the script.  This will enable us to skip past decisions we have already made and will stop the script if we have not yet confirmed that we agree with the decision outcome as it's written below OR if our decision inputs have changed since we last confirmed.  To confirm a decision we have to make sure we run this in interactive mode and that the decision statement is the last statement in a chunk with no blank lines.
+
+In this case we are making a decision that `m1` is better than `m2`, and `m2WT` and we're basing that decision on the `summary_wide` information. We can also include the goodness of fit diagnostics via specifying the file names in the `file_inputs` argument.  We can force a stop in the workflow for a decision to be remade by specifying `force = TRUE`.
+
+```{r decision1}
+
+## Gonna make a decision based on m1, m2, and m2WT
+## first make sure they're finished
+wait_finish(c(c(m1, m2, m2WT))) 
+
+## now make the decision
+decision(inputs = summary_wide(c(m1, m2, m2WT), m = FALSE), 
+         outcome = "m1 is better") # next line must be end of chunk
+```
+
+```{r boot}
+
+# here we do a bootstrap. This relies of bootstrap splits being already
+# calculated - see the s01 script for how to make them
+# only running 4 samples for demo purposes
+
+m1_boot <- m1 %>% make_boot_datasets(samples = 4, overwrite = TRUE)
+
+m1_boot ## display data.frame
+
+## Note that the column m is a vector of nm objects.  nm objects and functions are fully vectorized.  So you can extract and set fields using the normal syntax. Note that above when you did c(m2, m2WT) you were creating a vector of length 2 of 2 nonmem runs.  The advanced usage script in the demo will make extensive use of vectorization - combined with dplyr you can make very complex workflows with small readable syntax
+
+cmd(m1_boot$m)
+
+```
+
+```{r run_boot}
+
+## running a vector of runs uses the same syntax as running a single run.  All
+## runs will be launched at the same time.  In a grid system this is usually
+## fine as jobs will queue until resources are available.  If running on a
+## non-grid system consider run_nm_batch() with the "threads" argument to avoid
+## eating up all your resources
+
+m1_boot$m %>% 
+  run_nm() %>% ## run all runs
+  wait_finish() %>% ## wait until all are finished
+  nm_list_render("Scripts/basic_boot.Rmd") ## generate run report in "Results" directory
+
+```
+
+```{r make_xv}
+# can also do bootstrap cross validation as follows
+
+m1_xv <- m1_boot %>% 
+  make_xv_datasets() %>%
+  mutate(m_xv = m_xv %>%
+           update_parameters(m1_boot$m) %>%
+           dollar("EST",
+                  "$EST METHOD=IMP INTER EONLY= 1 MAPITER=0 ISAMPLE = 2000 NITER = 10 RANMETHOD=3S2 NOABORT PRINT=1 NSIG=3 SIGL=9"))
+
+```
+
+```{r run_xv, eval = FALSE}
+m1_xv$m_xv %>% run_nm() %>% wait_finish()
+
+summary_wide(m1_xv$m_xv)
+
+```
+
+
