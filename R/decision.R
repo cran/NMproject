@@ -103,7 +103,7 @@ decision <- function(inputs = c(),
       stop("auto decision FAILED - ", error_msg, call. = FALSE)
     } else {
       message("auto decision PASSED")
-      return(invisible())
+      if(length(inputs) + length(file_inputs) == 0) return(invisible())
     }
   }
 
@@ -111,24 +111,17 @@ decision <- function(inputs = c(),
     if (!interactive()) stop("new manual decision needed. Run interactively")
     inputs ## create inputs dependency
     cat(crayon::underline("\nmanual decision check\n"))
-    cat("expected decision outcome:\n", outcome)
-    ans <- readline("Does this accurately describe your decision? [y]es/[n]o/[c]heck:\n")
-    if (ans %in% "") {
-      stop("blank detected (if in R Notebooks, make sure decision() is at end of chunk with no blank line in between)")
-    }
-    if (nchar(ans) > 1) {
-      stop("give single character response", call. = FALSE)
-    }
-    if (ans %in% "n") {
-      stop(error_msg, call. = FALSE)
-    }
-    if (ans %in% "c") {
-      stop("have a look at inputs and if you agree with decision, rerun this answering [y] ", call. = FALSE)
-    }
-    if (ans %in% "y") {
+    cat("expected decision outcome:\n", outcome, "\n\n")
+    
+    ans <- usethis::ui_yeah("Do you agree with this decision?", 
+                            no = c("No", "Not sure need to check manually..."))
+    
+    if (ans) {
       return(TRUE)
+    } else {
+      stop("stopping further execution", call. = FALSE)
     }
-    stop("invalid response", call. = FALSE)
+    
   }
 
   if (!length(inputs)) inputs <- c()
@@ -142,7 +135,7 @@ decision <- function(inputs = c(),
 
   ## generate hashes for current call
   call_ob <- match.call()
-  decision_cache_path <- file.path(nm_default_dir("models"), "decision_cache")
+  decision_cache_path <- file.path(nm_dir("models"), "decision_cache")
   dir.create(decision_cache_path, recursive = TRUE, showWarnings = FALSE)
   cache_name <- paste0(digest::digest(call_ob), ".RDS")
   decision_info <- list(inputs = inputs)

@@ -5,18 +5,13 @@
 
 <!-- badges: start -->
 
-[![Travis-CI Build
-Status](https://travis-ci.org/tsahota/NMproject.svg?branch=master)](https://travis-ci.org/tsahota/NMproject)
-[![AppVeyor Build
-Status](https://ci.appveyor.com/api/projects/status/github/tsahota/NMproject?branch=master&svg=true)](https://ci.appveyor.com/project/tsahota/NMproject)
-[![Coverage
-Status](https://coveralls.io/repos/github/tsahota/NMproject/badge.svg?branch=master)](https://coveralls.io/github/tsahota/NMproject?branch=master)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/NMproject)](https://CRAN.R-project.org/package=NMproject)
+[![R-CMD-check](https://github.com/tsahota/NMproject/workflows/R-CMD-check/badge.svg)](https://github.com/tsahota/NMproject/actions)
 [![Codecov test
 coverage](https://codecov.io/gh/tsahota/NMproject/branch/master/graph/badge.svg)](https://codecov.io/gh/tsahota/NMproject?branch=master)
 [![Lifecycle:
 maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://lifecycle.r-lib.org/articles/stages.html)
-[![CRAN
-status](https://www.r-pkg.org/badges/version/NMproject)](https://CRAN.R-project.org/package=NMproject)
 <!-- badges: end -->
 
 Script based ‘NONMEM’ model development in RStudio.
@@ -34,16 +29,12 @@ syntax and is not backwards compatible. Video is to be replaced*
 
 ## Installation
 
-<!-- CRAN install instructions
+You can install the released version of NMproject from
+[CRAN](https://CRAN.R-project.org) with:
 
-You can install the released version of NMproject from [CRAN](https://CRAN.R-project.org) with:
-
-
-```r
+``` r
 install.packages("NMproject")
 ```
-
--->
 
 To install the latest version of NMproject from
 [GitHub](https://github.com/):
@@ -88,7 +79,7 @@ Following snippet adds covariates to model object, `m2`:
 -   run
 
 ``` r
-m2WT <- m2 %>% child() %>%
+m2WT <- m2 %>% child("m2WT") %>%
   add_cov(param = "CL", cov = "WT", state = "power") %>%
   run_nm()
 ```

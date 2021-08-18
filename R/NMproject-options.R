@@ -21,20 +21,28 @@ set_nm_opts <- function() {
 
   if (is.null(getOption("nm_default_dirs"))) {
     options(nm_default_dirs = list(
-      models = "Models",
       scripts = "Scripts",
+      models = "Models",
       results = "Results",
-      "SourceData",
-      "DerivedData"
+      source_data = "SourceData",
+      derived_data = "DerivedData"
     ))
   }
-
+  
+  if (is.null(getOption("nm_pre_commit_hook"))) options(nm_pre_commit_hook = NULL)
+  if (is.null(getOption("nm_pre_push_hook"))) options(nm_pre_commit_hook = NULL)
+  
   if (is.null(getOption("kill_job"))) options(kill_job = identity)
 
   if (is.null(getOption("nm.overwrite_behaviour"))) options(nm.overwrite_behaviour = "ask")
   if (is.null(getOption("nm.force_render"))) options(nm.force_render = FALSE)
-  if (is.null(getOption("nm.cmd_default"))) options(nm.cmd_default = "execute {ctl_name} -dir={run_dir}")
 
+  if (is.null(getOption("nm_default_fields"))) {
+    options(nm_default_fields = list(
+      cmd = "execute {ctl_name} -dir={run_dir}"
+    ))
+  }
+  
   if (is.null(getOption("nmtran_exe_path"))) options(nmtran_exe_path = find_nm_tran_path(warn = FALSE))
 
   if (is.null(getOption("code_library_path"))) {
@@ -44,7 +52,8 @@ set_nm_opts <- function() {
   options("nm.options" = c(
     "system_cmd", "system_nm", "quiet_run", "intern", "available_nm_types",
     "nm_default_dirs", "kill_job", "nm.overwrite_behaviour",
-    "nm.force_render", "nm.cmd_default", "nmtran_exe_path",
+    "nm.force_render", "nm_default_fields", "nmtran_exe_path",
+    "nm_pre_commit_hook", "nm_pre_push_hook",
     "code_library_path"
   ))
 }
@@ -73,8 +82,8 @@ set_nm_opts <- function() {
 #'   models = "Models",
 #'   scripts = "Scripts",
 #'   results = "Results",
-#'   "SourceData",
-#'   "Data"
+#'   source_data = "SourceData",
+#'   derived_data = "Data"
 #' ))
 #' 
 #' nm_default_dirs()
@@ -89,18 +98,44 @@ nm_default_dirs <- function(dir_list) {
   }
   if (!missing(dir_list)) {
     ## now assume we're setting
-    validate_dir_list(dir_list)
     options(nm_default_dirs = dir_list)
   }
 }
 
-validate_dir_list <- function(dir_list) {
-  if (any(!c("scripts", "models", "results") %in% names(dir_list))) {
-    stop("names \"scripts\", \"models\", and \"results\" must at least be present")
-  }
-}
+.nm_dir_descriptions <- list(
+  scripts = "Directory for R and Rmd scripts",
+  models = "Directory for NONMEM runs and other 3rd party software",
+  results = "Default directory for results including tables, pdfs, Rmd reports, ...",
+  source_data = "Directory for unmodified source data",
+  derived_data = "Directory for derived analysis-ready datasets"
+)
 
 #' Get a default directory
+#'
+#' @description
+#'
+#' `r lifecycle::badge("deprecated")`
+#'
+#' Get subdirectory (relative) paths in a configuration independent way.  The
+#' configuration can be modified with [nm_default_dirs()].  Can be useful in
+#' scripts, where you need to refer to locations of model files or output files.
+#'
+#' @param name Character. Directory type.  Should be either `"scripts"`,
+#'   `"models"` or `"results"`.
+#' @param ... Deprecated.
+#'
+#' @seealso [nm_default_dirs()]
+#'
+#' @export
+
+nm_default_dir <- function(name = c("scripts", "models", "results"), ...) {
+  .Deprecated("nm_dir")
+  if (missing(name)) stop("need argument")
+  name < match.arg(name)
+  nm_default_dirs()[[name]]
+}
+
+#' Get a directory name
 #'
 #' @description
 #'
@@ -117,19 +152,18 @@ validate_dir_list <- function(dir_list) {
 #' @seealso [nm_default_dirs()]
 #'
 #' @examples
-#' nm_default_dir("scripts") ## will return the path to the "scripts" directory
-#' nm_default_dir("models")
-#' nm_default_dir("results")
+#' nm_dir("scripts") ## will return the path to the "scripts" directory
+#' nm_dir("models")
+#' nm_dir("results")
 #' @export
 
-nm_default_dir <- function(name = c("scripts", "models", "results"), ...) {
+nm_dir <- function(name, ...) {
   if (missing(name)) stop("need argument")
-  name < match.arg(name)
   nm_default_dirs()[[name]]
 }
 
 set_default_dirs_in_rprofile <- function(path = ".Rprofile", dir_list = nm_default_dirs()) {
-  validate_dir_list(dir_list)
+
   if (!file.exists(path)) file.create(path)
 
   start_flag <- "# nm_default_dir modify - start"
@@ -162,6 +196,40 @@ set_default_dirs_in_rprofile <- function(path = ".Rprofile", dir_list = nm_defau
   txt <- c(start_flag, txt, end_flag, "", current_lines)
   writeLines(txt, path)
   usethis::ui_done("setting {usethis::ui_path('nm_default_dirs')} in {usethis::ui_path('.Rprofile')}")
+}
+
+
+#' Setup default nm object fields
+#'
+#' @description
+#'
+#' `r lifecycle::badge("stable")`
+#'
+#' This allows organisations/individuals with their own nm object field
+#' preferences to set these.
+#'
+#' @param field_list Optional named list or vector. Names correspond to function
+#'   names and object fields, values correspond to what will be set.
+#'
+#' @return if `field_list` is missing, will return value of
+#' `getOption("nm_default_fields")` otherwise will set option `nm_default_fields`.
+#' @examples
+#'
+#' nm_default_fields()
+#' nm_default_fields(list(
+#'   cmd = "execute {ctl_name} -dir={run_dir}"
+#' ))
+#' nm_default_fields()
+#' 
+#' @export
+
+nm_default_fields <- function(field_list) {
+  if (missing(field_list)) {
+    return(getOption("nm_default_fields"))
+  }
+  if (!missing(field_list)) {
+    options(nm_default_fields = field_list)
+  }
 }
 
 #' Generic execute command for SGE grids
@@ -317,7 +385,7 @@ system_nm_default <- function(cmd, ...) {
 #'
 #' @param cmd Character. System call to be sent to the terminal.
 #' @param dir Character. Directory (relative path) to run command in.  By
-#'   default this will be the "models" directory (`nm_default_dir("models")`).
+#'   default this will be the "models" directory (`nm_dir("models")`).
 #' @param ... Additional arguments to be passed to `system()` or `shell()`.
 #' 
 #' @return The return value of `getOption("system_nm")`.
@@ -336,7 +404,7 @@ system_nm_default <- function(cmd, ...) {
 #' }
 #'
 #' @export
-system_nm <- function(cmd, dir = nm_default_dir("models"), ...) {
+system_nm <- function(cmd, dir = nm_dir("models"), ...) {
   if (is.null(dir) | !file.exists(dir)) dir <- "."
   if (file.exists(dir)) {
     currentwd <- getwd()

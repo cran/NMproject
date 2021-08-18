@@ -18,6 +18,8 @@
 #'   this is not specified, will guess based on presence of `nm_default_dirs`
 #' @param overwrite Logical (default = FALSE).
 #' @param silent Logical (default = FALSE).
+#' @param find_replace_dir_names Logical (default = TRUE). Will attempt to find
+#'   replace strings in scripts to reflect [nm_default_dirs()].
 #'
 #' @return A `tibble` with staged file information.
 #'
@@ -34,7 +36,8 @@
 #'
 #' @export
 stage <- function(files, root_dir,
-                  overwrite = FALSE, silent = FALSE) {
+                  overwrite = FALSE, silent = FALSE, 
+                  find_replace_dir_names = TRUE) {
 
   ## send unmodified files into staging area for importation
 
@@ -43,8 +46,8 @@ stage <- function(files, root_dir,
   ##########################
   if (missing(root_dir)) {
     roots <- sapply(files, function(file) {
-      rprojroot::find_root(rprojroot::has_dir(nm_default_dir("scripts")) |
-        rprojroot::has_dir(nm_default_dir("models")) |
+      rprojroot::find_root(rprojroot::has_dir(nm_dir("scripts")) |
+        rprojroot::has_dir(nm_dir("models")) |
         rprojroot::has_dir("Scripts") |
         rprojroot::has_dir("Models"),
       path = file
@@ -60,10 +63,12 @@ stage <- function(files, root_dir,
   }
 
   destination <- relative_path(files, root_dir)
-  destination <- gsub("^Scripts/", paste0(nm_default_dir("scripts"), "/"), destination)
-  destination <- gsub("^Models/", paste0(nm_default_dir("models"), "/"), destination)
-  destination <- gsub("^Results/", paste0(nm_default_dir("results"), "/"), destination)
-
+  destination <- gsub("^Scripts/", paste0(nm_dir("scripts"), "/"), destination)
+  destination <- gsub("^Models/", paste0(nm_dir("models"), "/"), destination)
+  destination <- gsub("^Results/", paste0(nm_dir("results"), "/"), destination)
+  destination <- gsub("^SourceData/", paste0(nm_dir("source_data"), "/"), destination)
+  destination <- gsub("^DerivedData/", paste0(nm_dir("derived_data"), "/"), destination)
+  
   d <- dplyr::tibble(from = files, destination)
   d$staging <- file.path("staging", d$destination)
 
@@ -94,6 +99,16 @@ stage <- function(files, root_dir,
 
   if (!silent) message("File(s) staged in project:\n", paste(paste0(" ", d$staging[do_copy]), collapse = "\n"), "\nTo import use import()")
 
+  if (find_replace_dir_names) {
+    for (path in d$staging) {
+      file_find_replace(path, "Scripts", nm_dir("scripts"))
+      file_find_replace(path, "Models", nm_dir("models"))
+      file_find_replace(path, "Results", nm_dir("results"))
+      file_find_replace(path, "SourceData", nm_dir("source_data"))
+      file_find_replace(path, "DerivedData", nm_dir("derived_data"))
+    }
+  }
+  
   invisible(d)
 }
 
@@ -113,6 +128,8 @@ stage <- function(files, root_dir,
 #' @param skip Character (default = `"\\.mod$"`). Pattern to skip.  Model files
 #'   will be imported directly into the project in order to avoid conflicts and
 #'   will instead reside only in the staging area.
+#' @param find_replace_dir_names Logical (default = TRUE). Will attempt to find
+#'   replace strings in scripts to reflect [nm_default_dirs()].
 #'
 #' @return Invisibly returns `copy_table` argument.
 #'
@@ -136,7 +153,7 @@ stage <- function(files, root_dir,
 #' @export
 
 import <- function(copy_table, overwrite = FALSE, silent = FALSE,
-                   skip = "\\.mod$") {
+                   skip = "\\.mod$", find_replace_dir_names = TRUE) {
 
   ## import the files_to_copy
 
@@ -147,7 +164,10 @@ import <- function(copy_table, overwrite = FALSE, silent = FALSE,
   copy_table_orig <- copy_table
 
   if (is.character(copy_table)) {
-    copy_table <- stage(copy_table, overwrite = overwrite, silent = silent)
+    copy_table <- stage(copy_table, 
+                        overwrite = overwrite, 
+                        silent = silent,
+                        find_replace_dir_names = find_replace_dir_names)
   }
 
   copy_table <- copy_table[!is.na(copy_table$destination), ]
@@ -183,8 +203,10 @@ import <- function(copy_table, overwrite = FALSE, silent = FALSE,
     )
   }
 
-  copy_table_orig$imported <- copy_table_orig$destination %in%
-    copy_table$destination
+  if(inherits(copy_table_orig, "data.frame")){
+    copy_table_orig$imported <- copy_table_orig$destination %in%
+      copy_table$destination 
+  }
 
   invisible(copy_table_orig)
 }
@@ -421,6 +443,13 @@ search_raw <- function(files, text, search_title = TRUE, search_contents = TRUE)
 
 ls_code_library <- function(pattern = ".") {
   paths <- ls_scripts(extn = ".*", folder = getOption("code_library_path"), recursive = TRUE)
+
+  excluded_types <- c("\\.Rproj", "README")
+  
+  for (excluded_type in excluded_types) {
+    paths <- paths[!grepl(excluded_type, paths)] 
+  }
+  
   paths[grepl(pattern, paths)]
 }
 

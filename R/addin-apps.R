@@ -28,8 +28,11 @@ get_single_object_for_app <- function() {
   overwrite_behaviour("skip")
   on.exit(overwrite_behaviour(old_behaviour))
 
+  ## temporarily disable run_nm  
+  run_nm <- identity
+
   suppressMessages({
-    m <- eval(parse(text = selected_text))
+    m <- eval(parse(text = selected_text), envir = parent.frame(n = 3))
   })
   m
 }

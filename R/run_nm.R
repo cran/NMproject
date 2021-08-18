@@ -114,6 +114,9 @@ run_nm.nm_generic <- function(m,
 
       matched <- identical(run_cache_disk$checksums, current_checksums)
       if (matched) {
+        if (!is_finished(m)) {
+          warning("run was previously executed but has is_finished() status = FALSE")
+        }
         message("rebuilding run from cache... use run_nm(force = TRUE) to override")
         ## update object and return
         m <- m %>% executed(TRUE)
@@ -318,7 +321,7 @@ ctl_table_files.default <- function(ctl) {
 #' NONMEM produces a lot of temporary files which can add up to a lot of disk
 #' space.  One strategy to remove this is to use the `clean` option in the PsN
 #' command.  However, this can automatically remove files as soon as the run
-#' finishes that may be useful for debugging.  `ls_tempfiles()`` allows you to
+#' finishes that may be useful for debugging.  `ls_tempfiles()` allows you to
 #' list the paths of all temporary files, for a single run or for all runs for
 #' inspection and deletion. `clean_run()` is a wrapper function that runs
 #' `ls_tempfiles()` and deletes everything returned.  For safety is limited to
@@ -591,7 +594,7 @@ data_name <- function(x) UseMethod("data_name")
 
 data_name.default <- function(x) {
   unlist(lapply(x, function(x) {
-    if (!file.exists(x)) x <- file.path(nm_default_dir("models"), x)
+    if (!file.exists(x)) x <- file.path(nm_dir("models"), x)
     if (!file.exists(x)) stop("can't find control stream")
     x <- normalizePath(x)
     ctl <- readLines(x, warn = FALSE)

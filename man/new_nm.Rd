@@ -4,7 +4,7 @@
 \alias{new_nm}
 \title{Create a new (parent) nm object}
 \usage{
-new_nm(based_on, run_id = NA_character_, data_path, cmd)
+new_nm(based_on, run_id = NA_character_, data_path, cmd, force = FALSE)
 }
 \arguments{
 \item{based_on}{Character. Relative path to an existing control file from
@@ -21,8 +21,11 @@ file specified in \code{based_on}.  However it is recommended to specify this
 explicitly as a relative path.}
 
 \item{cmd}{Optional character. PsN command to use. If unspecified will use
-\code{getOption("nm.cmd_default")}. Use glue notation for inheritance.  See
-details.}
+\code{getOption("nm_default_fields")} value of \code{cmd}. Use glue notation for
+inheritance.  See details.}
+
+\item{force}{(Default = \code{FALSE}). Forces object creation even if \code{based_on}
+model is in the \code{nm_dir("models")} directory.}
 }
 \value{
 An object of class \code{nm_list}.  Attributes can be viewed by printing

@@ -9,6 +9,7 @@ nm_create_analysis_project(
   dirs = nm_default_dirs(),
   style = c("analysis", "analysis-package"),
   use_renv = FALSE,
+  readme_template_package = "NMproject",
   ...
 )
 }
@@ -17,13 +18,18 @@ nm_create_analysis_project(
 specifying a name, this will create the analysis project in the current
 working directory.  See details for naming requirements.}
 
-\item{dirs}{Character list or vector.  Default = \code{nm_default_dirs()}}
+\item{dirs}{Character list or vector.  Default = \code{nm_default_dirs()}.  Can
+also handle an ordered string which is supplied by the RStudio project
+template interface.}
 
 \item{style}{Character. Either \code{"analysis"} or \code{"analysis-package"} See
 details for \code{path} requirements and function behaviour.}
 
 \item{use_renv}{Logical (default = \code{FALSE}). Should \code{renv} be used or not in
 project.}
+
+\item{readme_template_package}{Package name from which to load the README
+template (default = \code{"NMproject"})}
 
 \item{...}{Deprecated.}
 }

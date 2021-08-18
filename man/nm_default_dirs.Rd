@@ -29,8 +29,8 @@ nm_default_dirs(list(
   models = "Models",
   scripts = "Scripts",
   results = "Results",
-  "SourceData",
-  "Data"
+  source_data = "SourceData",
+  derived_data = "Data"
 ))
 
 nm_default_dirs()

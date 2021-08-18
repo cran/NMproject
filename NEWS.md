@@ -1,3 +1,73 @@
+# NMproject 0.6.4
+
+* Revamped the manual edit interface.  This is backwards incompatible.
+  merge conflicts will now be flagged.
+  
+* Resolve manual edit 'addin' for 
+  handling merge conflicts in manual edits (#17)
+
+* `view_patch()` prints to console instead of opening window
+
+* Better instructions on RStudio Addin usage.
+
+* Fixed bug were `nm_create_analysis_project` would fail in windows if using
+  the home directory due to a mismatch between how '~' is interpreted by R
+  and `usethis`.
+  
+* Fixed bug in failing CRAN checks in macOS systems.
+
+# NMproject 0.6.3
+
+The first post CRAN release
+
+## Main changes
+
+* Revamped the NMproject project creation template and `nm_create_analysis_project()`
+  for greater customisability ability and removed dependence on `options()` which 
+  was causing strange behaviour.
+  
+* Expanded analysis README template for new NMprojects to run analysis level tests on
+  build.  Useful for compliance checking.
+  
+* Added `nm_pre_commit_hook()` and `nm_pre_commit_hook()` for custom NMproject
+  analysis projects
+  
+* Expanded model diagnostic rmarkdown template to include more 'xpose' plots.
+
+* Included an experimental `%f>%` pipe for applying functions elementwise
+  to vector valued nm objects.
+  
+* Included `is_nmproject_dir()`, intended for package owners of dependent packages
+
+* Renamed `nm_default_dir()` to `nm_dir()`
+
+* Removed `nm.cmd_default` option in favour of the more flexible `nm_default_fields`.
+  See `?nm_default_fields()` for help.
+
+* `decision()` uses `usethis::ui_yeah()` for prompting rather than `readline()`.
+
+* `stage()` has `find_replace_dir_names` argument to handle custom NMproject
+  directory structures.
+  
+## Minor changes
+
+* Made `run_id` argument mandatory in `child()`.
+
+* Added example code for first object creation in code library dialog boxes 
+  when a model file is imported
+  
+* `new_nm()` will now fail if user tries to use a run based on one in the
+  Models.  This is for safety as the Models directory should only contain 
+  NMproject generated code.
+  
+* The code library will not display `.Rroj` or `README` files.
+  
+## Deprecated functions
+
+* `preview()` is now deprecated and removed in favour of the code library 'Addin'
+
+* `nm_default_dir` is now deprecated
+
 # NMproject 0.6.2
 
 This is the first CRAN release of NMproject.  Here are the major changes here 

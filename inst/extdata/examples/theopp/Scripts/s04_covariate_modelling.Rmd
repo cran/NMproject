@@ -27,6 +27,7 @@ opts_chunk$set(message = TRUE)
 
 library(NMproject)
 library(dplyr)
+library(ggplot2)
 
 devtools::load_all()
 

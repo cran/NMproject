@@ -3,13 +3,16 @@ proj_name <- "test_nmproject"
 proj_path <- file.path(tempdir(), proj_name)
 
 test_that("run and post", {
+  
+  skip_if_not(rmarkdown::pandoc_available("1.12.3"))
+  
   currentwd <- getwd()
+  if (file.exists(proj_path)) unlink(proj_path, recursive = TRUE, force = TRUE)
   nm_create_analysis_project(proj_path)
   on.exit({
     setwd(currentwd)
     unlink(proj_path, recursive = TRUE, force = TRUE)
   })
-
 
   testfilesloc <- file.path(currentwd, "theopp")
   zip_file <- file.path(currentwd, "theopp.zip")
@@ -21,7 +24,7 @@ test_that("run and post", {
   file.rename("cache", ".cache")
 
   unlink(testfilesloc, recursive = TRUE)
-
+  
   ## end boiler plate
   ############################
 
@@ -29,7 +32,7 @@ test_that("run and post", {
 
   ## run all scripts
   overwrite_behaviour("skip")
-
+  
   res <- tryCatch(run_all_scripts(), error = function(e) {
     on.exit({
       dump.frames(to.file = TRUE)

@@ -10,12 +10,16 @@
 #'
 #' @param path Character path (relative or absolute) to project.  If just
 #'   specifying a name, this will create the analysis project in the current
-#'   working directory.  See details for naming requirements.
-#' @param dirs Character list or vector.  Default = `nm_default_dirs()`
+#' working directory.  See details for naming requirements.
+#' @param dirs Character list or vector.  Default = `nm_default_dirs()`.  Can
+#'   also handle an ordered string which is supplied by the RStudio project
+#'   template interface.
 #' @param style Character. Either `"analysis"` or `"analysis-package"` See
 #'   details for `path` requirements and function behaviour.
 #' @param use_renv Logical (default = `FALSE`). Should `renv` be used or not in
 #'   project.
+#' @param readme_template_package Package name from which to load the README
+#'   template (default = `"NMproject"`)
 #' @param ... Deprecated.
 #'
 #' @details The function works like as is inspired by
@@ -66,13 +70,31 @@
 
 nm_create_analysis_project <- function(path, dirs = nm_default_dirs(),
                                        style = c("analysis", "analysis-package"),
-                                       use_renv = FALSE, ...) {
+                                       use_renv = FALSE, readme_template_package = "NMproject", 
+                                       ...) {
 
   ## need to normalize path because usethis has different
   ## home directory, so use use R normalizePath to remove abiguity
-  path <- normalizePath(path, mustWork = FALSE)
-
-  validate_dir_list(dirs)
+  
+  if(is.character(dirs) & length(dirs) == 1) dirs <- parse_dirs(dirs)
+  
+  current_default_dirs <- nm_default_dirs()
+  nm_default_dirs(dirs)
+  on.exit(nm_default_dirs(current_default_dirs))
+  
+  ## if it's a full path, leave it alone
+  ## otherwise if it's a relative path, we need the working directory to make it full
+  if (!is_full_path(path)) {
+    path <- file.path(normalizePath(getwd()), path)
+    path <- normalizePath(path, mustWork = FALSE)    
+  }
+  ## needed because usethis::create_project and R can disagree on ~ location
+  ## R should take precendence
+  path <- path.expand(path)   
+  
+  if (file.exists(path)) {
+    stop("Directory already exists. Aborting.")
+  }
 
   style <- match.arg(style)
   name <- basename(path)
@@ -83,34 +105,23 @@ nm_create_analysis_project <- function(path, dirs = nm_default_dirs(),
   }
 
   usethis::create_project(path = path, rstudio = TRUE, open = FALSE)
-
+  
   current_proj <- try(usethis::proj_get(), silent = TRUE)
   if (inherits(current_proj, "try-error")) {
     current_proj <- NULL
   }
   usethis::proj_set(path)
-  on.exit(usethis::proj_set(current_proj))
+  on.exit(usethis::proj_set(current_proj), add = TRUE)
 
+  write("This directory is for .R files containing R functions", file.path(path, "R", "Readme.txt"))
+  usethis::use_build_ignore(file.path("R", "Readme.txt"))
 
   usethis::use_template("README.Rmd",
-    data = list(Package = name),
-    package = "NMproject"
+    data = c(Package = name, dirs),
+    package = readme_template_package
   )
 
   usethis::use_build_ignore("README.Rmd")
-
-  ## no badges - skip this part of starters for now
-  repo <- git2r::init(usethis::proj_get())
-  git2r::add(repo, path = "README.Rmd")
-
-  tryCatch(
-    {
-      git2r::commit(repo, message = "added README.Rmd", all = TRUE)
-    },
-    error = function(e) {
-      usethis::ui_oops("cannot commit {usethis::ui_path('README.Rmd')}. Aborting...")
-    }
-  )
 
   if (use_renv) {
     if (!requireNamespace("renv", quietly = TRUE)) {
@@ -123,7 +134,25 @@ nm_create_analysis_project <- function(path, dirs = nm_default_dirs(),
 
   if (use_renv) renv::scaffold(project = usethis::proj_get())
 
-  for (dir_name in dirs) usethis::use_directory(dir_name, ignore = TRUE)
+  for (i in seq_along(dirs)) {
+    dir_name <- dirs[[i]]
+    if (!dir_name %in% ".") {
+      usethis::use_directory(dir_name, ignore = TRUE)
+      ## create staging equivalent
+      usethis::use_directory(file.path("staging", dir_name), ignore = TRUE)
+      
+      generic_dir_name <- names(dirs)[i]
+      readme_path <- file.path(dir_name, "Readme.txt")
+      staging_readme_path <- file.path("staging", dir_name, "Readme.txt")
+      if (generic_dir_name %in% names(.nm_dir_descriptions)) {
+        write(.nm_dir_descriptions[[generic_dir_name]], file.path(path, readme_path))
+        write(.nm_dir_descriptions[[generic_dir_name]], file.path(path, staging_readme_path))
+      } else {
+        write("Custom directory", file.path(path, readme_path))
+        write("Custom directory", file.path(path, staging_readme_path))
+      }
+    }
+  }
 
   tryCatch(
     {
@@ -154,10 +183,92 @@ nm_create_analysis_project <- function(path, dirs = nm_default_dirs(),
       usethis::ui_info("skipping creation of {usethis::ui_path('NAMESPACE')}")
     }
   )
-
+  
   set_default_dirs_in_rprofile(file.path(folder, name, ".Rprofile"), dirs)
+  
+  suppressMessages(devtools::build_readme(path = path))
+
+  ## No R directory for simple package - advanced users needs to create this manually
+  ##  This is because RStudio by default tries to save files in the R directory.
+  if (style %in% "analysis") unlink(file.path(folder, name, "R"), recursive = TRUE)
+    
+  ## no badges - skip this part of starters for now
+  repo <- git2r::init(usethis::proj_get())
+  
+  if(!is.null(nm_pre_commit_hook())) {
+    usethis::use_git_hook("pre-commit", nm_pre_commit_hook())
+  }
+  
+  if(!is.null(nm_pre_push_hook())) {
+    usethis::use_git_hook("pre-push", nm_pre_push_hook())
+  }
+  
+  git2r::add(repo, path = "*")
+  
+  tryCatch(
+    {
+      git2r::commit(repo, message = "Initial commit", all = TRUE)
+    },
+    error = function(e) {
+      usethis::ui_oops("cannot commit. Aborting commit...")
+    }
+  )
+
   return(invisible(path))
 }
+
+parse_dirs <- function(dirs){
+  dirs <- as.character(dirs)
+  if(length(dirs) != 1) stop("dirs must be length 1", call. = FALSE)
+  dirs <- strsplit(dirs, ",")[[1]]
+  dirs <- trimws(dirs)
+
+  named_indexes <- seq_len(min(length(dirs), length(.nm_dir_descriptions)))
+  names(dirs)[named_indexes] <- names(.nm_dir_descriptions)[named_indexes]
+  names(dirs)[is.na(names(dirs))] <- ""
+  dirs <- dirs[!dirs %in% ""]
+  dirs <- as.list(dirs)
+  dirs
+}
+
+#' @rdname git_hooks
+#' @name git_hooks
+#' @title Git hooks
+#' 
+#' @description 
+#' 
+#' `r lifecycle::badge("experimental")`
+#' 
+#' This function is primarily for organisational level configuration. Supply
+#' git hooks in the form of R functions and they will be executed via the
+#' `Rscript` interface.
+#' 
+#' @param cmd Optional command for setting the git hook.
+#' 
+#' @return If no `cmd` is specified this returns the return value of
+#'   `getOption("nm_pre_commit_hook")`.  Otherwise there is no return value.
+#' 
+#' @seealso [nm_create_analysis_project()]
+#' @keywords internal
+#' @export 
+nm_pre_commit_hook <- function(cmd){
+  if (missing(cmd)) {
+    return(getOption("nm_pre_commit_hook"))
+  }
+  ## now assume we're setting
+  options(nm_pre_commit_hook = cmd)
+}
+
+#' @rdname git_hooks
+#' @export
+nm_pre_push_hook <- function(cmd){
+  if (missing(cmd)) {
+    return(getOption("nm_pre_push_hook"))
+  }
+  ## now assume we're setting
+  options(nm_pre_push_hook = cmd)
+}
+
 
 #' Package name validator from `usethis`
 #'

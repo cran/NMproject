@@ -27,6 +27,7 @@
 setup_nm_demo <- function(demo_name = "theopp",
                           overwrite = FALSE,
                           additional_demo_locations = NULL) {
+  
   examples_dir <- character()
   examples_dirs <- character()
 
@@ -56,9 +57,11 @@ setup_nm_demo <- function(demo_name = "theopp",
 
   files_to_copy <- dir(examples_dir, all.files = TRUE, full.names = TRUE, recursive = TRUE)
 
-  stage_info <- stage(files_to_copy, overwrite = overwrite, silent = TRUE)
+  stage_info <- stage(files_to_copy, overwrite = overwrite, silent = TRUE, 
+                      find_replace_dir_names = TRUE)
 
-  import(stage_info, overwrite = overwrite)
+  imported_info <- import(stage_info, overwrite = overwrite)
+  
 }
 
 
@@ -81,7 +84,7 @@ setup_nm_demo <- function(demo_name = "theopp",
 #'
 #' @export
 run_all_scripts <- function(index, quiet = FALSE) {
-  script_files <- dir(nm_default_dir("scripts"), "s[0-9]+_.*?\\.R(md)?$", full.names = TRUE)
+  script_files <- dir(nm_dir("scripts"), "s[0-9]+_.*?\\.R(md)?$", full.names = TRUE)
 
   dplan <- dplyr::tibble(script_files) %>%
     dplyr::mutate(rmd = grepl("\\.Rmd", .data$script_files))
@@ -101,4 +104,27 @@ run_all_scripts <- function(index, quiet = FALSE) {
 
   res <- lapply(exprs, rlang::eval_tidy)
   return(invisible(TRUE))
+}
+
+#' Is the directory an NMproject directory
+#' 
+#' @description
+#'
+#' `r lifecycle::badge("stable")`
+#'
+#' Find out whether current (or specified) directory is an NMproject directory
+#' or not.
+#' 
+#' @param path Optional path to test if it's an NMproject or not.
+#' 
+#' @return Logical `TRUE` or `FALSE`
+#' 
+#' @export
+
+is_nmproject_dir <- function(path = getwd()){
+  
+  rprofile_path <- file.path(path, ".Rprofile")
+  if (!file.exists(rprofile_path)) return(FALSE)
+  any(grepl("nm_default_dirs", readLines(rprofile_path)))
+  
 }

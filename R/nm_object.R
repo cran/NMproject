@@ -9,7 +9,7 @@
 #' @param based_on Character. Relative path to an existing control file from
 #'   which to base this run.  NMproject will not modify or run this control
 #'   file.  Instead it will create a new control file specified by the
-#' `ctl_name` field (see Details below).
+#'   `ctl_name` field (see Details below).
 #' @param run_id Character. Run identifier. This is used to name the run and
 #'   output files such as $TABLE outputs.
 #' @param data_path Character. Path to dataset. If this is not specified,
@@ -17,11 +17,13 @@
 #'   file specified in `based_on`.  However it is recommended to specify this
 #'   explicitly as a relative path.
 #' @param cmd Optional character. PsN command to use. If unspecified will use
-#'   `getOption("nm.cmd_default")`. Use glue notation for inheritance.  See
-#'   details.
+#'   `getOption("nm_default_fields")` value of `cmd`. Use glue notation for
+#'   inheritance.  See details.
+#' @param force (Default = `FALSE`). Forces object creation even if `based_on`
+#'   model is in the `nm_dir("models")` directory.
 #'
 #' @details The `cmd` field uses `glue` notation.  So instead of specifying
-#'  `execute runm1.mod -dir=m1`, it is best to specify `execute {ctl_name}
+#'   `execute runm1.mod -dir=m1`, it is best to specify `execute {ctl_name}
 #'  -dir={run_dir}`.  The values of `ctl_name` and `run_dir` refer to object
 #'  fields and if these change value like when the `child()` function is used to
 #'  create a separate child object, the `cmd` field will update automatically.
@@ -94,8 +96,20 @@
 new_nm <- function(based_on,
                    run_id = NA_character_,
                    data_path,
-                   cmd) {
+                   cmd,
+                   force = FALSE) {
   m <- nm(run_id = run_id)
+  if (!force) {
+    in_models_dir <- identical(
+      normalizePath(dirname(based_on), mustWork = FALSE), 
+      normalizePath(nm_dir("models"), mustWork = FALSE)
+    )
+    if (in_models_dir) {
+      stop("The '", nm_dir("models"), "' directory is meant for automatically generated models, 
+ this is risky. Move the 'based_on' to another directory in the analysis project, 
+ or rerun with force=TRUE")
+    }
+  }
   if (!missing(based_on)) m <- m %>% based_on(based_on)
   if (!missing(data_path)) m <- m %>% data_path(data_path)
   if (!missing(cmd)) m <- m %>% cmd(cmd)
@@ -104,7 +118,7 @@ new_nm <- function(based_on,
 
 ## internal function
 nm_generic <- function(run_id = NA_character_,
-                       run_in = nm_default_dir("models"),
+                       run_in = nm_dir("models"),
                        parent_run_id = NA_character_,
                        parent_run_in = NA_character_,
                        parent_ctl_name = NA_character_,
@@ -112,7 +126,7 @@ nm_generic <- function(run_id = NA_character_,
                        ctl_name = "run{run_id}.mod",
                        type = "execute",
                        run_dir = "{run_id}",
-                       results_dir = nm_default_dir("results"),
+                       results_dir = nm_dir("results"),
                        lst_path = "{run_dir}/NM_run1/psn.lst") {
 
   # m <- new.env()
@@ -152,19 +166,34 @@ To use the alpha interface, install NMproject 0.3.2",
   m$data_path <- NA_character_
   m$cmd <- NA_character_
   m$cores <- as.integer(1)
-  m$parafile <- NA_character_
+  m$parafile <- "path/to/parafile.pnm"
   m$walltime <- NA_integer_
 
   unique_id <- "{type}.{run_in}{.Platform$file.sep}{run_dir}"
   ## the following is in order of glueing
   m$glue_fields <- list(
     run_dir, ctl_name, results_dir, unique_id,
-    lst_path, NA_character_, getOption("nm.cmd_default")
+    lst_path, NA_character_, NA_character_
   )
   names(m$glue_fields) <- c(
     "run_dir", "ctl_name", "results_dir", "unique_id",
     "lst_path", "data_path", "cmd"
   )
+  
+  ## look through nm_default_fields and set glue_fields before replacing glue tags
+  default_fields <- nm_default_fields()
+  default_glue <- names(default_fields) %in% names(m$glue_fields)
+  
+  for (i in seq_along(default_fields)) {
+    glue <- default_glue[i]
+    value <- default_fields[[i]]
+    name <- names(default_fields)[i]
+    if (glue) {
+      m$glue_fields[[name]] <- value
+    } else {
+      m[[name]] <- value
+    }
+  }
 
   for (field in names(m$glue_fields)) {
     m <- replace_tag(m, field)
@@ -228,7 +257,7 @@ nm <- Vectorize_nm_list(nm_generic, SIMPLIFY = FALSE)
 #' @param m Parent nm object.
 #' @param run_id Character.  New `run_id` to assign to child object.
 #' @param type Character (default = `"execute"`). Type of child object.
-#' @param parent Optional nm object (default = `nm(NA)`) . Parent object will by
+#' @param parent Optional nm object (default = `m`) . Parent object will by
 #'   default be `m`, but this argument will force parent to be a different
 #'   object.
 #' @param silent Logical (default = `FALSE`). Should warn if conflicts detected.
@@ -252,18 +281,25 @@ nm <- Vectorize_nm_list(nm_generic, SIMPLIFY = FALSE)
 #' nm_diff(m2, m1)
 #'
 #' @export
-child <- function(m, run_id = NA_character_, type = "execute", parent = nm(NA), silent = FALSE) {
+child <- function(m, run_id = NA_character_, type = "execute",
+                  parent = m, silent = FALSE) {
   UseMethod("child")
 }
 #' @export
-child.nm_generic <- function(m, run_id = NA_character_, type = "execute", parent = nm(NA), silent = FALSE) {
+child.nm_generic <- function(m, run_id = NA_character_, type = "execute",
+                             parent = m, silent = FALSE) {
+  
+  if (is.na(run_id)) {
+    stop("child() needs a run_id argument e.g. m2 <- m1 %>% child(run_id = \"m2\")")
+  }
+  
+  if (identical(as.character(run_id), as.character(run_id(m)))){
+    stop("run_id of the child should be different from parent e.g. m2 <- m1 %>% child(run_id = \"m2\")")
+  }
+    
   mparent <- m
-  # if(is.environment(m)){
-  #   old_classes <- class(m)
-  #   m <- as.environment(as.list(m, all.names=TRUE))
-  #   class(m) <- old_classes
-  # }
-
+  parent <- parent # evaluate now rather than lazily
+  
   m <- m %>% executed(FALSE)
   m <- m %>% job_info(NA_character_)
   m[["result_files"]] <- c()
@@ -272,13 +308,6 @@ child.nm_generic <- function(m, run_id = NA_character_, type = "execute", parent
   m <- m %>% parent_ctl_name(ctl_name(m))
   m <- m %>% parent_results_dir(results_dir(m))
 
-  ## if missing increment run_id
-  if (is.na(run_id)) {
-    if (!is.na(run_id(m))) {
-      run_id <- increment_run_id(run_id(m))
-      message("child run_id automatically set to: ", run_id)
-    }
-  }
   if (!is.na(run_id)) m <- m %>% run_id(run_id)
 
   m <- m %>% ctl_contents(ctl_contents(m),
@@ -290,13 +319,15 @@ child.nm_generic <- function(m, run_id = NA_character_, type = "execute", parent
 
   ## check for file conficts
   if (!is_single_na(m[["ctl_contents"]])) {
-    file_conflicts <- intersect(psn_exported_files(mparent), psn_exported_files(m))
+    file_conflicts <- intersect(
+      psn_exported_files(parent),
+      psn_exported_files(m)
+    )
     if (length(file_conflicts) > 0) {
       if (!silent) {
         warning("Child file(s) currently in conflict with parent:\n",
           paste(paste0(" ", file_conflicts), collapse = "\n"),
-          "\nYou will overwrite parent object outputs if you run now",
-          call. = FALSE
+          "\nYou will overwrite parent object outputs if you run now"
         )
       }
     }
@@ -316,7 +347,7 @@ child.nm_generic <- function(m, run_id = NA_character_, type = "execute", parent
     }
   }
 
-  if (!is.na(parent)) m <- m %>% change_parent(parent)
+  if (!identical(parent, mparent)) m <- m %>% change_parent(parent)
 
   m
 }
