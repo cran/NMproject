@@ -22,11 +22,6 @@ Script based ‘NONMEM’ model development in RStudio.
 -   100% flexibility through tracked manual edits to model files
 -   Customisable to multiple infrastructure types
 
-[Two-minute YouTube
-summary](https://www.youtube.com/watch?v=b7oBb6QZub8) *WARNING: this is
-the prototype “alpha” interface. The new interface has a different
-syntax and is not backwards compatible. Video is to be replaced*
-
 ## Installation
 
 You can install the released version of NMproject from
@@ -79,7 +74,7 @@ Following snippet adds covariates to model object, `m2`:
 -   run
 
 ``` r
-m2WT <- m2 %>% child("m2WT") %>%
+m2WT <- m2 %>% child(run_id = "m2WT") %>%
   add_cov(param = "CL", cov = "WT", state = "power") %>%
   run_nm()
 ```
@@ -129,7 +124,7 @@ same concise syntax (no loops):
 -   run them all
 
 ``` r
-m1rep <- m1 %>% child(1:5) %>% 
+m1rep <- m1 %>% child(run_id = 1:5) %>% 
   init_theta(init = rnorm(init, mean = init, sd = 0.3)) %>%
   init_omega(init = runif(init, min = init/2, max = init/2)) %>%
   run_in("Models/m1_perturb_inits") %>%

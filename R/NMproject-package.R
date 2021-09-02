@@ -69,5 +69,6 @@
 ## usethis namespace: end
 NULL
 
-# Suppress R CMD check note
-#' @importFrom lifecyle badge
+
+
+

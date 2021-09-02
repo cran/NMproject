@@ -4,7 +4,7 @@ Title: Script Based 'NONMEM' Model Development
 URL: https://tsahota.github.io/NMproject/,
         https://github.com/tsahota/NMproject
 BugReports: https://github.com/tsahota/NMproject/issues
-Version: 0.6.4
+Version: 0.6.5
 Authors@R: c(
  person("Tarj", "Sahota", email = "t.sahota0@gmail.com", 
     role = c("aut", "cre", "cph")),
@@ -39,25 +39,25 @@ Suggests: testthat, knitr, ggplot2, future, data.tree, xpose,
 Collate: 'NMproject-options.R' 'NMproject-package.R' 'Vectorize.R'
         'addin-apps.R' 'apply_manual_edit.R' 'basic-ctl-manipulation.R'
         'utils.R' 'basic_methods.R' 'boot.R' 'nm_object.R' 'cache.R'
-        'covariate-explore.R' 'data_filter.R' 'decision.R'
-        'deprecated.R' 'derived-data-prep.R' 'developer-funs.R'
-        'directory-management.R' 'dollar_input.R' 'find-nonmem.R'
-        'import-code.R' 'init_funs.R' 'input_data.R' 'job_stats.R'
-        'low-level-ctl-handling-funs.R' 'make_OCC_every_dose.R'
-        'make_project.R' 'manual-edit.R' 'monitoring.R'
-        'nm-gettersetters.R' 'nm_diff.R' 'nm_read_table.R'
-        'nm_render.R' 'nm_tran.R' 'nm_tree.R' 'nmsave.R' 'ofv.R'
-        'output_table.R' 'param-manipulate.R' 'plot_iter.R'
-        'post-run-summaries.R' 'prompt_overwrite.R' 'psn_style_scm.R'
-        'read_ext.R' 'rmd_to_vignette.R' 'run_nm.R' 'shiny-apps.R'
-        'show-file.R' 'sim-diagnostics.R' 'stepwise-covariate.R'
-        'subroutine.R' 'system-hooks.R' 'text.R' 'update_parameters.R'
-        'zzz.R'
+        'covariate-explore.R' 'cran_note_handle.R' 'data_filter.R'
+        'decision.R' 'deprecated.R' 'derived-data-prep.R'
+        'developer-funs.R' 'directory-management.R' 'dollar_input.R'
+        'find-nonmem.R' 'import-code.R' 'init_funs.R' 'input_data.R'
+        'job_stats.R' 'low-level-ctl-handling-funs.R'
+        'make_OCC_every_dose.R' 'make_project.R' 'manual-edit.R'
+        'monitoring.R' 'nm-gettersetters.R' 'nm_diff.R'
+        'nm_read_table.R' 'nm_render.R' 'nm_tran.R' 'nm_tree.R'
+        'nmsave.R' 'ofv.R' 'output_table.R' 'param-manipulate.R'
+        'plot_iter.R' 'post-run-summaries.R' 'prompt_overwrite.R'
+        'psn_style_scm.R' 'read_ext.R' 'rmd_to_vignette.R' 'run_nm.R'
+        'shiny-apps.R' 'show-file.R' 'sim-diagnostics.R'
+        'stepwise-covariate.R' 'subroutine.R' 'system-hooks.R' 'text.R'
+        'update_parameters.R' 'zzz.R'
 NeedsCompilation: no
-Packaged: 2021-08-18 00:40:52 UTC; tarjinde
+Packaged: 2021-09-01 11:48:58 UTC; tsahota0
 Author: Tarj Sahota [aut, cre, cph],
   AstraZeneca [cph],
   Nuria Buil Bruna [ctb],
   Stein Schalkwijk [ctb]
 Repository: CRAN
-Date/Publication: 2021-08-18 09:00:04 UTC
+Date/Publication: 2021-09-02 16:50:06 UTC
