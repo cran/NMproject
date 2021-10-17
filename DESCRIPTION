@@ -4,7 +4,7 @@ Title: Script Based 'NONMEM' Model Development
 URL: https://tsahota.github.io/NMproject/,
         https://github.com/tsahota/NMproject
 BugReports: https://github.com/tsahota/NMproject/issues
-Version: 0.6.5
+Version: 0.6.7
 Authors@R: c(
  person("Tarj", "Sahota", email = "t.sahota0@gmail.com", 
     role = c("aut", "cre", "cph")),
@@ -51,13 +51,14 @@ Collate: 'NMproject-options.R' 'NMproject-package.R' 'Vectorize.R'
         'plot_iter.R' 'post-run-summaries.R' 'prompt_overwrite.R'
         'psn_style_scm.R' 'read_ext.R' 'rmd_to_vignette.R' 'run_nm.R'
         'shiny-apps.R' 'show-file.R' 'sim-diagnostics.R'
-        'stepwise-covariate.R' 'subroutine.R' 'system-hooks.R' 'text.R'
-        'update_parameters.R' 'zzz.R'
+        'snippet_setup.R' 'stepwise-covariate.R' 'subroutine.R'
+        'system-hooks.R' 'text.R' 'update_parameters.R'
+        'with_temp_git_config.R' 'zzz.R'
 NeedsCompilation: no
-Packaged: 2021-09-01 11:48:58 UTC; tsahota0
+Packaged: 2021-10-17 17:41:46 UTC; rstudio
 Author: Tarj Sahota [aut, cre, cph],
   AstraZeneca [cph],
   Nuria Buil Bruna [ctb],
   Stein Schalkwijk [ctb]
 Repository: CRAN
-Date/Publication: 2021-09-02 16:50:06 UTC
+Date/Publication: 2021-10-17 18:00:02 UTC

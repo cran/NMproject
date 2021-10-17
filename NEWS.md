@@ -1,3 +1,20 @@
+# NMproject 0.6.7
+
+* Added ability to use NMproject-specific code completion snippets `setup_code_completion()`.
+  Typing `new_nm` will set up parent object, `child` will set up child object.
+
+* fixed bug in Windows where R markdown templates weren't being produced.
+
+* fixed minor windows bug where addins were executing models.
+
+* `run_nm()` checks for psn installation in first use of R session
+
+* `clean_tempfiles()` replaces `clean_run()`
+
+# NMproject 0.6.6
+
+* Added google verification and 'DocSearch'
+
 # NMproject 0.6.5
 
 * Fixed failing CRAN checks in macOS systems.
