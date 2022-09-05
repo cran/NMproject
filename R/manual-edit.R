@@ -24,6 +24,9 @@ start_manual_edit <- function(m, combine_patch = NA_character_, replace_ctl = NA
   #   stop("patching functionality only implemented for linux/unix systems\n consider manual_edit() instead",
   #        call. = FALSE)
 
+  m_orig <- m
+  m <- m[1]
+  usethis::ui_info("Starting manual edit...")
   if (is_nm_list(m) & length(m) > 1) {
     stop("m cannot refer to multiple runs", call. = FALSE)
   }
@@ -36,7 +39,7 @@ start_manual_edit <- function(m, combine_patch = NA_character_, replace_ctl = NA
   dir.create(dirname(patch_path), showWarnings = FALSE, recursive = TRUE)
 
   #temp_ctl_path <- file.path(run_in(m), paste0("manual_", ctl_name(m)))
-  temp_ctl_path <- file.path(nm_dir("models"), paste0("base-", patch_id))
+  temp_ctl_path <- file.path(run_in(m), paste0("base-", patch_id))
   mnew <- m %>%
     ctl_path(temp_ctl_path) %>%
     write_ctl(force = TRUE)
@@ -179,8 +182,8 @@ view_patch <- function(patch_id) {
 
 }
 
-new_patch_app <- function() {
-  ctx <- rstudioapi::getSourceEditorContext()
+new_patch_app <- function(ctx) {
+  if (missing(ctx)) ctx <- rstudioapi::getSourceEditorContext()
   selected_text <- ctx$selection[[1]]$text
   final_pipe_present <- grepl("\\s*%>%\\s*$", selected_text)
   final_newline_present <- grepl("\\n\\s*$", selected_text)
@@ -211,6 +214,9 @@ Follow the above instructions and indicate if you happy to proceed?", yes = "Yes
     return(invisible())
   }
 
+  
+  apply_txt <- paste0("apply_manual_edit(\"", res$patch_id, "\")")
+  usethis::ui_info("Adding {usethis::ui_code(apply_txt)} to script...")
   ## now diff ctl_path(m) and old_file_path
 
   diff_manual_edit(m, res)
@@ -233,11 +239,12 @@ Follow the above instructions and indicate if you happy to proceed?", yes = "Yes
     id = ctx$id
   )
 
-  message("apply_manual_edit() statement added to script")
+  usethis::ui_done("Added {usethis::ui_code(apply_txt)} to script")
+  
 }
 
-modify_patch_app <- function() {
-  ctx <- rstudioapi::getSourceEditorContext()
+modify_patch_app <- function(ctx) {
+  if (missing(ctx)) ctx <- rstudioapi::getSourceEditorContext()
   selected_text <- ctx$selection[[1]]$text
   final_pipe_present <- grepl("\\s*%>%\\s*$", selected_text)
   final_newline_present <- grepl("\\n\\s*$", selected_text)
@@ -272,6 +279,8 @@ Follow the above instructions and indicate if you happy to proceed?", yes = "Yes
     return(invisible())
   }
 
+  apply_txt <- paste0("apply_manual_edit(\"", res$patch_id, "\")")
+  usethis::ui_info("Adding {usethis::ui_code(apply_txt)} to script...")
   ## now diff ctl_path(m) and old_file_path
 
   diff_manual_edit(m, res)
@@ -288,16 +297,17 @@ Follow the above instructions and indicate if you happy to proceed?", yes = "Yes
   apply_manual_edit(\"", res$patch_id, "\")")
   }
 
-  rstudioapi::insertText(
+  rstudioapi::insertText(ctx$selection[[1]]$range,
     text = code_to_add,
     id = ctx$id
   )
 
-  message("apply_manual_edit() statement modified in script")
+  usethis::ui_done("apply_manual_edit() statement modified to {usethis::ui_code(apply_txt)} in script")
+
 }
 
-resolve_manual_edit <- function() {
-  ctx <- rstudioapi::getSourceEditorContext()
+resolve_manual_edit <- function(ctx) {
+  if (missing(ctx)) ctx <- rstudioapi::getSourceEditorContext()
   selected_text <- ctx$selection[[1]]$text
   final_pipe_present <- grepl("\\s*%>%\\s*$", selected_text)
   final_newline_present <- grepl("\\n\\s*$", selected_text)
@@ -338,6 +348,8 @@ Follow the above instructions and indicate if you happy to proceed?", yes = "Yes
     return(invisible())
   }
 
+  apply_txt <- paste0("apply_manual_edit(\"", res$patch_id, "\")")
+  usethis::ui_info("Adding {usethis::ui_code(apply_txt)} to script...")
   ## now diff ctl_path(m) and old_file_path
 
   diff_manual_edit(m, res)
@@ -354,19 +366,19 @@ Follow the above instructions and indicate if you happy to proceed?", yes = "Yes
   apply_manual_edit(\"", res$patch_id, "\")")
   }
 
-  rstudioapi::insertText(
+  rstudioapi::insertText(ctx$selection[[1]]$range,
     text = code_to_add,
     id = ctx$id
   )
 
-  message("apply_manual_edit() statement modified in script")
+  usethis::ui_done("apply_manual_edit() statement modified to {usethis::ui_code(apply_txt)} in script")
 
 }
 
 make_patch_app <- function() {
-  check_git_uservalues()
 
   ctx <- rstudioapi::getSourceEditorContext()
+  check_git_uservalues()
   selected_text <- ctx$selection[[1]]$text
   selected_text <- gsub("\\s*%>%\\s*$", "", selected_text)
   ## see if last function is apply_manual_edit
@@ -387,16 +399,16 @@ make_patch_app <- function() {
   }
 
   if (last_fun_name == "apply_manual_edit") {
-    modify_patch_app()
+    modify_patch_app(ctx)
   } else {
-    new_patch_app()
+    new_patch_app(ctx)
   }
 }
 
 resolve_manual_edit_app <- function() {
-  check_git_uservalues()
-
+  
   ctx <- rstudioapi::getSourceEditorContext()
+  check_git_uservalues()
   selected_text <- ctx$selection[[1]]$text
   selected_text <- gsub("\\s*%>%\\s*$", "", selected_text)
   ## see if last function is apply_manual_edit
@@ -417,7 +429,7 @@ resolve_manual_edit_app <- function() {
   }
 
   if (last_fun_name == "apply_manual_edit") {
-    resolve_manual_edit()
+    resolve_manual_edit(ctx)
   } else {
     stop("the last function applied to selection needs to be apply_manual_edit()")
   }

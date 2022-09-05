@@ -30,7 +30,7 @@ get_single_object_for_app <- function() {
 
   ## temporarily disable run_nm
   selected_text <- gsub("\\brun_nm\\b\\(", "as.list(", selected_text)
-  selected_text <- gsub("\\brun_nm_batch\\b\\(", "as.list(", selected_text)
+  selected_text <- gsub("\\brun_nm_single\\b\\(", "as.list(", selected_text)
 
   suppressMessages({
     m <- eval(parse(text = selected_text), envir = parent.frame(n = 3))
@@ -56,4 +56,23 @@ show_ctl_app <- function() {
 show_out_app <- function() {
   m <- get_single_object_for_app()
   show_out(m)
+}
+
+run_monitor_app <- function() {
+  
+  run_with_arg <- TRUE
+  
+  m <- try(get_single_object_for_app(), silent = TRUE)
+
+  ## check m - if not good run_with_arg <- FALSE  
+  if (inherits(m, "try-error")) {
+    run_with_arg <- FALSE
+  }
+  
+  if (run_with_arg) {
+    shiny_nm(m)  
+  } else {
+    shiny_nm()
+  }
+  
 }

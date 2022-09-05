@@ -20,14 +20,35 @@ nm_output <- function(r, dorig, ...) {
   UseMethod("nm_output")
 }
 
+#' @export
 nm_output.nm_generic <- function(r, dorig, ...) {
   r <- as_nm_generic(r) ## because nm_list method is identical
   wait_finish(r)
+  
+  out_file_info <- r %>% dollar("TABLE") %>% paste(collapse = "\n") %>% strsplit("\\$", perl = TRUE)
+  out_file_info <- out_file_info[[1]] %>%
+    lapply(function(sub_text) {
+      sub_text <- paste(sub_text, collapse = "\n")
+      filename_exists <- grepl(".*?FILE\\s*=\\s*(\\S+)\\b.*", sub_text)
+      if (!filename_exists) return(data.frame())
+      filename <- gsub(".*?FILE\\s*=\\s*(\\S+)\\b.*", "\\1", sub_text)
+      format_exists <- grepl(".*?FORMAT\\s*=\\s*(\\S+)\\b.*", sub_text)
+      format <- gsub(".*?FORMAT\\s*=\\s*(\\S+)\\b.*", "\\1", sub_text)
+      if (!format_exists) format <- NA_character_
+      comma_sep <- grepl(",", format)
+      data.frame(filename, format, comma_sep)
+    }) %>%
+    dplyr::bind_rows()
 
-  ctl_out_files <- ctl_table_paths(as_nm_generic(r))
+  d <- lapply(seq_len(nrow(out_file_info)), function(i) {
+    
+    out_path <- file.path(run_in(r), out_file_info$filename[i])
+    if (out_file_info$comma_sep[i]) {
+      d <- nm_read_table(out_path, skip = 1, header = TRUE, sep = ",")      
+    } else {
+      d <- nm_read_table(out_path, skip = 1, header = TRUE)
+    }
 
-  d <- lapply(ctl_out_files, function(out_file) {
-    d <- nm_read_table(out_file, skip = 1, header = TRUE)
   })
 
   ## TODO: this will break if some tables have FIRSTONLY
@@ -48,8 +69,13 @@ nm_output.nm_generic <- function(r, dorig, ...) {
     expre <- parse(text = filter_statements)
     ## temporarily put NAs to zero for applying filtering
     ## this is what NONMEM does where "." = 0
+    ## except column C
     dorig_zeros <- dorig
-    dorig_zeros[is.na(dorig_zeros)] <- 0
+    dorig_zeros_match <- is.na(dorig_zeros)
+    if ("C" %in% colnames(dorig_zeros_match)) {
+      dorig_zeros_match[, "C"] <- FALSE
+    }
+    dorig_zeros[dorig_zeros_match] <- 0
     dORD <- which(with(dorig_zeros, eval(expre)))
   }
 
@@ -86,7 +112,12 @@ nm_output.nm_generic <- function(r, dorig, ...) {
   # dorig <- dorig[,names(dorig)[!names(dorig) %in% c("DV")]]
 
   # d$.tempORD <- 1:nrow(d) ## to preserve order (old code merge())
-  d2 <- dplyr::full_join(d, dorig, by = "PRKEY")
+  if (!sim_ctl) {
+    d2 <- dplyr::full_join(d, dorig, by = "PRKEY")    
+  } else {
+    d2 <- dplyr::left_join(d, dorig, by = "PRKEY")    
+  }
+
   # d2 <- d2[order(d2$.tempORD), ]
   # d2$.tempORD <- NULL
 
@@ -94,13 +125,14 @@ nm_output.nm_generic <- function(r, dorig, ...) {
   if (nreps > 1) d2$SIM[is.na(d2$SIM)] <- 0
 
   ## row number check
-  if (nrow(d2) != nrow(d) * (nreps - 1) / nreps + nrow(dorig)) stop("merge went wrong. debug")
+  if (!sim_ctl) if (nrow(d2) != nrow(d) * (nreps - 1) / nreps + nrow(dorig)) stop("merge went wrong. debug")
 
   message("Adding column: PRKEY")
 
   return(d2)
 }
 
+#' @export
 nm_output.nm_list <- nm_output.nm_generic
 
 #' @name output_table
@@ -170,7 +202,7 @@ output_table.default <- function(r, only_append = c(), ...) {
   if (length(only_append) > 0) {
     do <- do[, c(names(input_data(r)), only_append)]
   }
-  return(do)
+  return(dplyr::as_tibble(do))
 }
 
 #' @export

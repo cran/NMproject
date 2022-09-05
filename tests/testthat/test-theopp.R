@@ -90,6 +90,15 @@ test_that("run and post", {
   m1 <- m1 %>% simple_field(test_field = 3)
   expect_true(simple_field(m1, test_field) == 3)
 
+  ## simple operations test
+
+  m1_modified_vec <- m1 %>% child(1:2) %>% 
+    run_id(paste0(run_id(.), "modified"))
+  m1_modified_map <- m1 %>% child(1:2) %>% 
+    map_nm(~ .x %>% run_id(paste0(run_id(.), "modified")))
+  
+  expect_identical(m1_modified_vec, m1_modified_map)
+  
   ## input data test
   dataset <- data_name(ctl_path(m1))
   expect_true(file.exists(file.path(run_in(m1), dataset)))
@@ -171,6 +180,7 @@ test_that("run and post", {
   unlink(file.path(run_dir_path(m1), "NMout.RDS"))
 
   m1 <- readRDS("Results/m1.RDS")
+  
   expect_true(is_successful(m1))
 
   ## omega matrix test
@@ -194,6 +204,10 @@ test_that("run and post", {
   expect_true(is.numeric(AIC(m1)))
   expect_true(is.numeric(BIC(m1)))
   expect_true(is.numeric(cond_num(m1)))
+  
+  cov_mat <- covariance_matrix(m1)[[1]]
+  expect_true(is.matrix(cov_mat))
+  expect_equal(ncol(cov_mat), nrow(cov_mat))
 
   ## ctl manipulation tests
   m1 <- readRDS("Results/m1.RDS")
@@ -218,24 +232,6 @@ test_that("run and post", {
     tol(12) %>%
     tol()
   expect_true(new_tol %in% 12)
-
-  ## subroutine tests
-  m1 <- readRDS("Results/m1.RDS")
-
-  ### advan 5 conversion
-  m1a5 <- m1 %>% subroutine(advan = 5)
-  expect_true(any(grepl("K1T2", text(m1a5)[[1]])))
-
-  ### diff tests
-  expect_true(length(nm_diff(m1, m1a5)) > 0)
-  expect_true(length(nm_diff(m1, text(m1a5)[[1]])) > 0)
-
-  ### advan 13 conversion
-  m1a13 <- m1 %>% subroutine(advan = 13)
-  expect_true(any(grepl("K1T2", text(m1a13)[[1]])))
-  expect_true(any(grepl("\\$DES", text(m1a13)[[1]])))
-
-  m1reverse <- m1a13 %>% subroutine(advan = 2)
 
   ## cache tests
   m1 <- readRDS("Results/m1.RDS")

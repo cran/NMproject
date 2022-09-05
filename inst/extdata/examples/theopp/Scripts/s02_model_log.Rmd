@@ -130,7 +130,7 @@ thinking
 
 m1s_temp <- m1 %>% child(run_id = "m1s_temp") %>%  
   update_parameters(m1) %>%
-  apply_manual_edit("tarjinde-2021-08-15-16-55-38")
+  apply_manual_edit("tarjinde-2021-11-17-08-52-52")
 
 # Alternatively highlight the whole lot and select Addins -> View diff
 
@@ -213,11 +213,11 @@ cmd(m1_boot$m)
 ## running a vector of runs uses the same syntax as running a single run.  All
 ## runs will be launched at the same time.  In a grid system this is usually
 ## fine as jobs will queue until resources are available.  If running on a
-## non-grid system consider run_nm_batch() with the "threads" argument to avoid
+## non-grid system consider the "threads" argument to avoid
 ## eating up all your resources
 
 m1_boot$m %>% 
-  run_nm_batch(threads = 1) %>% ## run all runs
+  run_nm(threads = 1) %>% ## run all runs
   wait_finish() %>% ## wait until all are finished
   nm_list_render("Scripts/basic_boot.Rmd") ## generate run report in "Results" directory
 
@@ -231,12 +231,12 @@ m1_xv <- m1_boot %>%
   mutate(m_xv = m_xv %>%
            update_parameters(m1_boot$m) %>%
            dollar("EST",
-                  "$EST METHOD=IMP INTER EONLY= 1 MAPITER=0 ISAMPLE = 2000 NITER = 10 RANMETHOD=3S2 NOABORT PRINT=1 NSIG=3 SIGL=9"))
+                  "$EST METHOD=IMP INTER EONLY= 1 MAPITER=0 ISAMPLE = 2000 NITER = 10 RANMETHOD=3S2P NOABORT PRINT=1 NSIG=3 SIGL=9"))
 
 ```
 
 ```{r run_xv, eval = FALSE}
-m1_xv$m_xv %>% run_nm_batch(threads = 1) %>% wait_finish()
+m1_xv$m_xv %>% run_nm(threads = 1) %>% wait_finish()
 
 summary_wide(m1_xv$m_xv)
 

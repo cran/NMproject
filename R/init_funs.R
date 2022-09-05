@@ -589,7 +589,7 @@ raw_init_theta <- function(m, replace) {
     d$init <- NA
     d$upper <- NA
 
-    number_regex <- "\\(?\\-?[0-9\\.]+\\)?F?I?X?\\)?"
+    number_regex <- "\\(?\\-?[0-9\\.eE\\+\\-]+\\)?F?I?X?\\)?"
     single_number_regex <- paste0("^(", number_regex, ")$")
     lower_init_regex <- paste0("^\\((", number_regex, "),(", number_regex, ")\\)F?I?X?$")
     lower_init_upper_regex <- paste0("^\\((", number_regex, "),(", number_regex, "),(", number_regex, ")\\)F?I?X?$")
@@ -638,11 +638,19 @@ raw_init_theta <- function(m, replace) {
 
     d$format <- NULL
 
-    ## grab the names
+    ## grab the names, unit, trans
 
     d$comment_nfields <- NA
     two_field_regex <- "^(.*?);(.*?)$"
     three_field_regex <- "^(.*?);(.*?);(.*?)$"
+    
+    ## convert 'name [unit]' to 'name ; unit'
+    d$comment <- gsub("^(.*?)\\[(.*?)\\]$", "\\1;\\2", d$comment)
+    ## convert 'name [unit] :trans' to 'name ; unit ; trans'
+    d$comment <- gsub("^(.*?)\\[(.*?)\\]\\s*:(.*?)$", "\\1;\\2;\\3", d$comment)
+    ## convert 'name :trans' to 'name ; ; trans'
+    d$comment <- gsub("^(.*?)\\s*:(.*?)$", "\\1; ;\\2", d$comment)
+    
     d$comment_nfields[grepl(two_field_regex, d$comment)] <- 2
     d$comment_nfields[grepl(three_field_regex, d$comment)] <- 3
 
@@ -783,7 +791,7 @@ raw_init_random <- function(m, replace, dollar = "OMEGA") {
     d$init <- NA
     d$upper <- NA
 
-    number_regex <- "\\(?\\-?[0-9\\.]+\\)?F?I?X?\\)?"
+    number_regex <- "\\(?\\-?[0-9\\.eE\\+\\-]+\\)?F?I?X?\\)?"
     single_number_regex <- paste0("^(", number_regex, ")$")
     lower_init_regex <- paste0("^\\((", number_regex, "),(", number_regex, ")\\)F?I?X?$")
     lower_init_upper_regex <- paste0("^\\((", number_regex, "),(", number_regex, "),(", number_regex, ")\\)F?I?X?$")
@@ -906,6 +914,14 @@ raw_init_random <- function(m, replace, dollar = "OMEGA") {
     d$comment_nfields <- NA
     two_field_regex <- "^(.*?);(.*?)$"
     three_field_regex <- "^(.*?);(.*?);(.*?)$"
+    
+    ## convert 'name [unit]' to 'name ; unit'
+    d$comment <- gsub("^(.*?)\\[(.*?)\\]$", "\\1;\\2", d$comment)
+    ## convert 'name [unit] :trans' to 'name ; unit ; trans'
+    d$comment <- gsub("^(.*?)\\[(.*?)\\]\\s*:(.*?)$", "\\1;\\2;\\3", d$comment)
+    ## convert 'name :trans' to 'name ; ; trans'
+    d$comment <- gsub("^(.*?)\\s*:(.*?)$", "\\1; ;\\2", d$comment)
+    
     d$comment_nfields[grepl(two_field_regex, d$comment)] <- 2
     d$comment_nfields[grepl(three_field_regex, d$comment)] <- 3
 

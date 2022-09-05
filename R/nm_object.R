@@ -100,14 +100,22 @@ new_nm <- function(based_on,
                    force = FALSE) {
   m <- nm(run_id = run_id)
   if (!force) {
-    in_models_dir <- identical(
-      normalizePath(dirname(based_on), mustWork = FALSE), 
+    in_models_dir <- normalizePath(dirname(based_on), mustWork = FALSE) %in% 
       normalizePath(nm_dir("models"), mustWork = FALSE)
-    )
-    if (in_models_dir) {
-      stop("The '", nm_dir("models"), "' directory is meant for automatically generated models, 
- this is risky. Move the 'based_on' to another directory in the analysis project, 
- or rerun with force=TRUE")
+
+    if (any(in_models_dir)) {
+      glue_ctl_names <- m[in_models_dir] %>% 
+        glue_fields("ctl_name") %>% 
+        unlist()
+      
+      glue_ext <- tools::file_ext(glue_ctl_names)
+      based_on_ext <- tools::file_ext(based_on)
+      if (any(based_on_ext %in% glue_ext)) {
+        bad_file_type <- file.path(run_in(m[in_models_dir])[1], paste0("*.", glue_ext))
+        usethis::ui_stop("It is not recommended for objects to be based_on file paths of the form {usethis::ui_path(bad_file_type)} as NMproject overwrites these.
+                         Either save your file in a different directory or with a different extension. 
+                         Aborting to be safe. Use force = TRUE to override")
+      }
     }
   }
   if (!missing(based_on)) m <- m %>% based_on(based_on)
@@ -243,6 +251,62 @@ To use the alpha interface, install NMproject 0.3.2",
 #' @keywords internal
 #' @export
 nm <- Vectorize_nm_list(nm_generic, SIMPLIFY = FALSE)
+
+#' Create an nm object from an already completed PsN run
+#' 
+#' @description 
+#' 
+#' `r lifecycle::badge("experimental")`
+#' 
+#' This is useful if the run was made outside of NMproject and we want to
+#' leverage NMproject to do postprocessing and results extraction.  It is not
+#' recommended to apply `run_nm()` or `write_ctl()` to this object as that would
+#' break reproducibility
+#' 
+#' @param mod_file Path to a model file
+#' @param data_path Optional path to the corresponding data set
+#' @param force Passed to `new_nm()`.
+#' 
+#' @return An nm object with class "completed_nm".
+#' 
+#' @export
+
+completed_nm <- function(mod_file, data_path = data_name(mod_file), force = FALSE) {
+  if (!file.exists(data_path)) {  ## guess data_path location
+    data_file_name <- basename(data_path)
+    
+    data_file_options <- c(
+      file.path(dirname(mod_file), data_file_name),  ## same dir as model file
+      file.path(nm_dir("derived_data"), data_file_name),
+      file.path(nm_dir("source_data"), data_file_name)
+    )
+    
+    data_file_exists <- file.exists(data_file_options) 
+    
+    if (any(data_file_exists)) {
+      data_path <- data_file_options[data_file_exists][1]
+      usethis::ui_info("inferring data_path to be: {usethis::ui_path(data_path)}
+                       Set data_path explicity if this is incorrect")
+    }
+  }
+  
+  m <- new_nm(run_id = basename(mod_file), based_on = mod_file, data_path = data_path, force = force) %>%
+    run_in(dirname(mod_file)) %>%
+    ctl_name("{run_id}") %>%
+    lst_path("{paste0(tools::file_path_sans_ext(ctl_name), '.lst')}")  ## use same location as mod_file
+  
+  nm_list_classes <- c("completed_nm_list", class(m)) ## first class will be completed_nm
+  
+  ## set nm_generic object to be "completed" too
+  m <- lapply(m, function(mi) {
+    class(mi) <- c("completed_nm_generic", class(mi))
+    mi
+  })
+  
+  class(m) <- nm_list_classes
+  
+  m
+}
 
 
 #' Make child nm object from parent
@@ -508,11 +572,14 @@ replace_tags <- function(m, field) {
 }
 
 
-glue_fields <- function(m) {
+glue_fields <- function(m, field) {
   UseMethod("glue_fields")
 }
 
-glue_fields.nm_generic <- function(m) m$glue_fields
+glue_fields.nm_generic <- function(m, field) {
+  if (missing(field)) return(m$glue_fields)
+  glue_fields(m)[[field]]
+}
 glue_fields.nm_list <- Vectorize_nm_list(glue_fields.nm_generic, SIMPLIFY = FALSE)
 
 custom_vector_field <- function(m, field, replace) {
@@ -581,6 +648,7 @@ nm_list2list <- function(m) {
 #'
 #' @param x An environment (default = `.GlobalEnv`) to search
 #'   or `data.frame` with (`nm_list` column) or `nm_list`.
+#' @param max_length Exclude objects with length above this.
 #'
 #' @return A single `nm_list` object with all model objects in environment `x`.
 #'
@@ -602,20 +670,27 @@ nm_list2list <- function(m) {
 #' )
 #' 
 #' @export
-nm_list_gather <- function(x = .GlobalEnv) {
+nm_list_gather <- function(x = .GlobalEnv, max_length = 1) {
   UseMethod("nm_list_gather")
 }
 
 #' @export
-nm_list_gather.default <- function(x = .GlobalEnv) {
+nm_list_gather.default <- function(x = .GlobalEnv, max_length = 1) {
   m <- lapply(x, function(object) {
-    if (inherits(object, "nm_list")) object else NA
+    if (inherits(object, "nm_list") & length(object) <= max_length) object else NA
   })
 
   m <- m[!is.na(m)]
   m <- do.call(c, m)
+  
+  ## get a rough order to them
+  numeric_run_ids <- as.numeric(gsub("[^0-9\\.]", "", run_id(m)))
+  if (!any(is.na(numeric_run_ids))){
+    m <- m[order(numeric_run_ids, decreasing = TRUE)]
+  }
+  
   m
 }
 
 #' @export
-nm_list_gather.nm_list <- function(x = .GlobalEnv) x
+nm_list_gather.nm_list <- function(x = .GlobalEnv, max_length = 1) x

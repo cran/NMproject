@@ -3,12 +3,22 @@
 \docType{data}
 \name{sge_parallel_execute}
 \alias{sge_parallel_execute}
+\alias{sge_parallel_execute2}
+\alias{sge_parallel_execute_batch}
 \title{Generic execute command for SGE grids}
 \format{
+An object of class \code{character} of length 1.
+
+An object of class \code{character} of length 1.
+
 An object of class \code{character} of length 1.
 }
 \usage{
 sge_parallel_execute
+
+sge_parallel_execute2
+
+sge_parallel_execute_batch
 }
 \value{
 A \code{character} object.
@@ -21,6 +31,14 @@ on SGE.
 }
 \details{
 Requires \code{cores} and \code{parafile} fields to be set.
+
+\code{sge_parallel_execute2} doubles the amount slots taken by the job
+(e.g. to avoid hyperthreading).
+
+\code{sge_parallel_execute_batch} eliminates pre-processing on master.
+Job submitted from compute node.  This job will occupy one slot for the
+duration of the NONMEM run.
+node.  Job pre-processed and submitted from a compute node
 }
 \examples{
 

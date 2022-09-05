@@ -11,6 +11,8 @@ set_nm_opts <- function() {
   if (is.null(getOption("system_nm"))) options(system_nm = function(cmd, ...) system_nm_default(cmd, ...))
   if (is.null(getOption("quiet_run"))) options(quiet_run = TRUE)
   if (is.null(getOption("intern"))) options(intern = FALSE)
+  
+  if (is.null(getOption("job_time_spacing"))) options(job_time_spacing = 0)
 
   if (is.null(getOption("available_nm_types"))) {
     options(available_nm_types = c(
@@ -54,7 +56,7 @@ set_nm_opts <- function() {
     "nm_default_dirs", "kill_job", "nm.overwrite_behaviour",
     "nm.force_render", "nm_default_fields", "nmtran_exe_path",
     "nm_pre_commit_hook", "nm_pre_push_hook",
-    "code_library_path"
+    "code_library_path", "job_time_spacing"
   ))
 }
 
@@ -109,31 +111,6 @@ nm_default_dirs <- function(dir_list) {
   source_data = "Directory for unmodified source data",
   derived_data = "Directory for derived analysis-ready datasets"
 )
-
-#' Get a default directory
-#'
-#' @description
-#'
-#' `r lifecycle::badge("deprecated")`
-#'
-#' Get subdirectory (relative) paths in a configuration independent way.  The
-#' configuration can be modified with [nm_default_dirs()].  Can be useful in
-#' scripts, where you need to refer to locations of model files or output files.
-#'
-#' @param name Character. Directory type.  Should be either `"scripts"`,
-#'   `"models"` or `"results"`.
-#' @param ... Deprecated.
-#'
-#' @seealso [nm_default_dirs()]
-#'
-#' @export
-
-nm_default_dir <- function(name = c("scripts", "models", "results"), ...) {
-  .Deprecated("nm_dir")
-  if (missing(name)) stop("need argument")
-  name < match.arg(name)
-  nm_default_dirs()[[name]]
-}
 
 #' Get a directory name
 #'
@@ -225,14 +202,42 @@ set_default_dirs_in_rprofile <- function(path = ".Rprofile", dir_list = nm_defau
 
 nm_default_fields <- function(field_list) {
   if (missing(field_list)) {
-    return(getOption("nm_default_fields"))
-  }
-  if (!missing(field_list)) {
+    getOption("nm_default_fields")
+  } else {
     options(nm_default_fields = field_list)
   }
 }
 
-#' Generic execute command for SGE grids
+#' Setup default job_time_spacing option
+#'
+#' @description
+#'
+#' `r lifecycle::badge("stable")`
+#'
+#' This allows organisations/individuals with their own job time spacing, used by [run_nm()] when `threads > 1`.
+#'
+#' @param seconds Optional numeric value. Values correspond to what will be set.
+#'
+#' @return if `seconds` is missing, will return value of
+#' `getOption("job_time_spacing")` otherwise will set option `job_time_spacing`.
+#' @examples
+#'
+#' job_time_spacing()
+#' job_time_spacing(1)
+#'
+#' @export
+
+job_time_spacing <- function(seconds) {
+  if (missing(seconds)) {
+    getOption("job_time_spacing")
+  } else {
+    options(job_time_spacing = seconds)
+  }
+}
+
+#' @rdname sge_parallel_execute
+#' 
+#' @title Generic execute command for SGE grids
 #'
 #' @description
 #'
@@ -265,6 +270,18 @@ nm_default_fields <- function(field_list) {
 #' sge_parallel_execute ## view the character to see how psn interfaces with SGE
 #' @export
 sge_parallel_execute <- "execute -run_on_sge -parafile={parafile} -sge_prepend_flags='-pe orte {cores} -V' {ctl_name} -dir={run_dir} -nodes={cores}"
+
+#' @rdname sge_parallel_execute
+#' @details `sge_parallel_execute2` doubles the amount slots taken by the job
+#'   (e.g. to avoid hyperthreading).
+sge_parallel_execute2 <- "execute -run_on_sge -parafile={parafile} -sge_prepend_flags='-pe orte {2*cores} -V' {ctl_name} -dir={run_dir} -nodes={cores}"
+
+#' @rdname sge_parallel_execute
+#' @details `sge_parallel_execute_batch` eliminates pre-processing on master.
+#'   Job submitted from compute node.  This job will occupy one slot for the
+#'   duration of the NONMEM run.
+#'   node.  Job pre-processed and submitted from a compute node
+sge_parallel_execute_batch <- "echo \"execute -run_on_sge -parafile={parafile} -sge_prepend_flags='-pe orte {cores} -V' {ctl_name} -dir={run_dir} -nodes={cores}\" | qsub -cwd -V"
 
 #' Generic execute command for parallelised runs
 #'
@@ -447,14 +464,16 @@ system_nm <- function(cmd, dir = nm_dir("models"), ...) {
   getOption("system_nm")(cmd, ...)
 }
 
-#' Convenience function for system_nm 
+#' Diagnostic test for system_nm 
 #' 
-#' Used for diagnostic purposes and a backend script for 
+#' Used for diagnostic purposes.  Will print shell outputs to screen.
 #' 
-#' @param ... Arguments passed to `system_nm()`
-#' @param intern Arguments passed to `system_nm()`
-#' @param ignore.stderr Arguments passed to `system_nm()`
-#' @param wait Arguments passed to `system_nm()`
+#' @param ... Arguments passed to `system_nm()`.
+#' @param intern Arguments passed to `system_nm()`.
+#' @param ignore.stderr Arguments passed to `system_nm()`.
+#' @param wait Arguments passed to `system_nm()`.
+#' 
+#' @keywords internal
 #' 
 #' @export
 

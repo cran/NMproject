@@ -40,7 +40,7 @@ results_dir(m, text)
 
 run_in(m, text)
 
-run_id(m, text)
+run_id(m, text, update_ctl = FALSE)
 
 result_files(m, text)
 
@@ -52,6 +52,9 @@ lst_path(m, text)
 \item{text}{Optional character for replacing field. If present function will
 modify field (of same name as function) otherwise will return value of
 field (of same name as function).}
+
+\item{update_ctl}{Should NONMEM code be updated to reflect the new run_id.
+Assumes \code{text} is not missing.  Default = FALSE.}
 }
 \value{
 The value of the specified field of \code{m} if \code{text} is missing.
@@ -78,6 +81,9 @@ To modify the value of a field:
 Some fields like \code{cmd} are glue fields.  In these cases inserting
 expressions inside braces in \code{text} will evaluate the expression (see
 examples).
+
+The function \code{lst_path()} sets the expected location of the lst file
+and all output files relative to the \code{run_in} location.
 }
 \examples{
 

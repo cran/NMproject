@@ -2,13 +2,12 @@
 % Please edit documentation in R/run_nm.R
 \name{run_nm}
 \alias{run_nm}
-\alias{run_nm_batch}
 \title{Run NONMEM jobs}
 \usage{
 run_nm(
   m,
-  ignore.stdout = TRUE,
-  ignore.stderr = TRUE,
+  threads = Inf,
+  ignore.stdout = FALSE,
   quiet = getOption("quiet_run"),
   intern = getOption("intern"),
   force = FALSE,
@@ -16,15 +15,14 @@ run_nm(
   cache_ignore_ctl = FALSE,
   cache_ignore_data = FALSE
 )
-
-run_nm_batch(m, threads = 10, ...)
 }
 \arguments{
 \item{m}{An nm object.}
 
-\item{ignore.stdout}{Logical (default=\code{TRUE}). Parameter passed to \code{system_nm()}.}
+\item{threads}{Numeric.  Number of jobs to run concurrently (default =
+\code{Inf}).  Will block the console until all jobs are submitted.}
 
-\item{ignore.stderr}{Logical (default=\code{TRUE}). Parameter passed to \code{system_nm()}.}
+\item{ignore.stdout}{Logical (default=\code{TRUE}). Parameter passed to \code{system_nm()}.}
 
 \item{quiet}{Logical (default=\code{FALSE}). Should \code{system_nm()} output be piped to
 screen?}
@@ -41,10 +39,6 @@ contents with cache?}
 
 \item{cache_ignore_data}{Logical (default = \code{FALSE}). Should check dataset with
 cache?}
-
-\item{threads}{Numeric.  Number of threads to run concurrently.}
-
-\item{...}{Additional arguments passed to \code{run_nm()}.}
 }
 \value{
 \code{m} with \code{job_info} fields populated.
@@ -62,15 +56,16 @@ By default, when highlighting code and evaluating it via an RStudio app,
 \code{run_nm()} will not execute and will just return the \code{nm} object.
 
 For vector \code{nm} objects of length more than 1, all runs will be launched at
-the same time.  This could overwhelm resources if not in a grid
-environment.  In this case see \code{\link[=run_nm_batch]{run_nm_batch()}} for batched execution of a
-vector valued \code{nm} object.
+the same time with a gap of \code{getOption("job_time_spacing")} seconds (default = 0).
+This could overwhelm resources if not in a grid environment.
 
-\code{run_nm_batch} is a variant of \code{run_nm()} containing a \code{threads} argument that will submit \code{\link[=run_nm]{run_nm()}}'s in
-batches and wait for them to complete. If you need all the runs to complete ensure you use a
-\code{\link[=wait_finish]{wait_finish()}} statement afterwards as R console will only be
-blocked for until the last batch has been submitted which will be before
-all runs have completed
+\code{run_nm} is a variant of \code{run_nm_single()} containing a \code{threads} argument
+that will submit \code{\link[=run_nm]{run_nm()}}'s in batches and wait for them to complete. If
+you need all the runs to complete ensure you use a \code{\link[=wait_finish]{wait_finish()}}
+statement afterwards as R console will only be blocked for until the last
+batch has been submitted which will be before all runs have completed.
+
+The \code{job_time_spacing} argument
 }
 \examples{
 ## requires NONMEM to be installed

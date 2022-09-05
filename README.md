@@ -1,7 +1,7 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# NMproject
+# NMproject <a href='https://tsahota.github.io/NMproject/'><img src='man/figures/logo.svg' align="right" height="139" /></a>
 
 <!-- badges: start -->
 
@@ -14,13 +14,20 @@ coverage](https://codecov.io/gh/tsahota/NMproject/branch/master/graph/badge.svg)
 maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://lifecycle.r-lib.org/articles/stages.html)
 <!-- badges: end -->
 
-Script based ‘NONMEM’ model development in RStudio.
+Script based ‘NONMEM’ model development in RStudio intended for
+intermediate to advanced R users.
 
 -   NONMEM code library
 -   End-to-end script based model development workflows
 -   Scale to groups of runs and complex workflows
 -   100% flexibility through tracked manual edits to model files
 -   Customisable to multiple infrastructure types
+
+## Prerequisites
+
+-   PsN &gt;= 4.4.8
+-   NONMEM installed with valid license
+-   RStudio
 
 ## Installation
 
@@ -116,17 +123,16 @@ m2s %>% nm_render("Scripts/basic_ppc.Rmd")
 ```
 
 Advanced functionality enables groups of runs to be handled with the
-same concise syntax (no loops):
+same concise syntax (no loops). For example:
 
 -   create 5 child runs
--   Perturb the initial estimates of $THETA and $OMEGA
--   move them to their own subdirectory
--   run them all
+-   Randomly perturb the initial estimates of $THETA and $OMEGA
+-   run them all in their own subdirectory for tidiness.
 
 ``` r
 m1rep <- m1 %>% child(run_id = 1:5) %>% 
   init_theta(init = rnorm(init, mean = init, sd = 0.3)) %>%
-  init_omega(init = runif(init, min = init/2, max = init/2)) %>%
+  init_omega(init = runif(init, min = init/2, max = init*2)) %>%
   run_in("Models/m1_perturb_inits") %>%
   run_nm()
 ```

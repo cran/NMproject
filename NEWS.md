@@ -1,3 +1,53 @@
+# NMproject 0.6.8
+
+* Removed reshape2 imports and replaced with tidyr v1.0.0.
+
+* Added `check_installation` for users to be able to verify
+  installations (fixes #18).
+
+* All closed form ADVAN/TRANS combinations added to the code library. 
+  Modified $ERROR so that log transformed DV and M3 models can be 
+  obtained by uncommenting lines.
+
+* The run monitor addin now uses object highlighting - useful for when objects 
+  are not in `.GlobalEnv` (e.g. they're in a `data.frame`).
+  
+* Changed `run_nm()` to have `threads` argument and make use of a `job_time_spacing` option to stagger multiple jobs and prevent overloading of a server (resolves #28).
+
+* Reorders arguments for `decision` so that auto decisions can be 
+  specified without explicitly referring to arguments
+  
+* Removed future package from suggests and `async` arguments from `nm_render*()` functions.
+
+* Manual edits can now be performed on vector nm objects
+
+* Included `*map*_nm()` functions as equivalents to `purrr::*map*_*()` functions.  These return `nm_list` objects.
+
+* Improvements to the `subroutine()` function and included package tests.
+
+* Added `path` argument to `write_ctl()` so control file can be written to 
+  other locations.
+
+* Added package hex sticker.
+
+* Added `covariance_matrix()` for extracting covariance matrices.
+
+* Added `completed_nm()` for handling completed nonmem runs.
+
+* Added `sge_parallel_execute_batch` for SGE cluster environments.
+
+* Added support for "name [unit] :trans" type parameter comments.
+
+* Fixed resolve manual edit failure when directory change was responsible 
+  for failure.
+
+* RANMETHOD=3S2 changed to RANMETHOD=3S2P in code library and examples to 
+  improve parallel processing consistency of runs.
+  
+* Replaced caching mechanism of `nm_render()` and `nm_list_render()` with xfun.
+
+* Fixed bug when OMEGAS have same names as THETAS.
+
 # NMproject 0.6.7
 
 * Added ability to use NMproject-specific code completion snippets `setup_code_completion()`.

@@ -40,18 +40,18 @@ dp <- dplyr::bind_rows(
   ),
   dplyr::tibble(
     advan = 3, trans = 3,
-    base_name = c("R2T0", "R2T3", "V2", "V3"),
-    relation = c("R2T0*V2", "R2T3*V2", NA, "V3+V2"),
-    inv_relation = c("R2T0/V2", "R2T3/V2", NA, "V3-V2"),
+    base_name = c("R2T0", "R2T3", "V2", "R3T2"),
+    relation = c("R2T0*V2", "R2T3*V2", NA, "V2+V2*R2T3/R3T2"),
+    inv_relation = c("R2T0/V2", "R2T3/V2", NA, "V2*R2T3/(R3T2-V2)"),
     nm_name = c("CL", "Q", "V", "VSS"),
     cmt = 2,
     oral = FALSE
   ),
   dplyr::tibble(
     advan = 3, trans = 4,
-    base_name = c("R2T0", "R2T3", "V2", "V3"),
-    relation = c("R2T0*V2", "R2T3*V2", NA, NA),
-    inv_relation = c("R2T0/V2", "R2T3/V2", NA, NA),
+    base_name = c("R2T0", "R2T3", "V2", "R3T2"),
+    relation = c("R2T0*V2", "R2T3*V2", NA, "V2*R2T3/R3T2"),
+    inv_relation = c("R2T0/V2", "R2T3/V2", NA, "V2*R2T3/R3T2"),
     nm_name = c("CL", "Q", "V1", "V2"),
     cmt = 2,
     oral = FALSE
@@ -66,18 +66,18 @@ dp <- dplyr::bind_rows(
   ),
   dplyr::tibble(
     advan = 4, trans = 3,
-    base_name = c("R1T2", "R2T0", "R2T3", "V2", "V3"),
-    relation = c(NA, "R2T0*V2", "R2T3*V2", NA, "V3+V2"),
-    inv_relation = c(NA, "R2T0/V2", "R2T3/V2", NA, "V3-V2"),
+    base_name = c("R1T2", "R2T0", "R2T3", "V2", "R3T2"),
+    relation = c(NA, "R2T0*V2", "R2T3*V2", NA, "V2+V2*R2T3/R3T2"),
+    inv_relation = c(NA, "R2T0/V2", "R2T3/V2", NA, "V2*R2T3/(R3T2-V2)"),
     nm_name = c("KA", "CL", "Q", "V", "VSS"),
     cmt = 2,
     oral = TRUE
   ),
   dplyr::tibble(
     advan = 4, trans = 4,
-    base_name = c("R1T2", "R2T0", "R2T3", "V2", "V3"),
-    relation = c(NA, "R2T0*V2", "R2T3*V2", NA, NA),
-    inv_relation = c(NA, "R2T0/V2", "R2T3/V2", NA, NA),
+    base_name = c("R1T2", "R2T0", "R2T3", "V2", "R3T2"),
+    relation = c(NA, "R2T0*V2", "R2T3*V2", NA, "V2*R2T3/R3T2"),
+    inv_relation = c(NA, "R2T0/V2", "R2T3/V2", NA, "V2*R2T3/R3T2"),
     nm_name = c("KA", "CL", "Q", "V2", "V3"),
     cmt = 2,
     oral = TRUE
@@ -92,9 +92,9 @@ dp <- dplyr::bind_rows(
   ),
   dplyr::tibble(
     advan = 11, trans = 4,
-    base_name = c("R2T0", "R2T3", "V2", "V3", "R2T4", "V4"),
-    relation = c("R2T0*V2", "R2T3*V2", NA, NA, "R2T4*V2", NA),
-    inv_relation = c("R2T0/V2", "R2T3/V2", NA, NA, "R2T4/V2", NA),
+    base_name = c("R2T0", "R2T3", "V2", "R3T2", "R2T4", "R4T2"),
+    relation = c("R2T0*V2", "R2T3*V2", NA, "V2*R2T3/R3T2", "R2T4*V2", "V2*R2T4/R4T2"),
+    inv_relation = c("R2T0/V2", "R2T3/V2", NA, "V2*R2T3/R3T2", "R2T4/V2", "V2*R2T4/R4T2"),
     nm_name = c("CL", "Q2", "V1", "V2", "Q3", "V3"),
     cmt = 3,
     oral = FALSE
@@ -109,9 +109,9 @@ dp <- dplyr::bind_rows(
   ),
   dplyr::tibble(
     advan = 12, trans = 4,
-    base_name = c("R1T2", "R2T0", "R2T3", "V2", "V3", "R2T4", "V4"),
-    relation = c(NA, "R2T0*V2", "R2T3*V2", NA, NA, "R2T4*V2", NA),
-    inv_relation = c(NA, "R2T0/V2", "R2T3/V2", NA, NA, "R2T4/V2", NA),
+    base_name = c("R1T2", "R2T0", "R2T3", "V2", "R3T2", "R2T4", "R4T2"),
+    relation = c(NA, "R2T0*V2", "R2T3*V2", NA, "V2*R2T3/R3T2", "R2T4*V2", "V2*R2T4/R4T2"),
+    inv_relation = c(NA, "R2T0/V2", "R2T3/V2", NA, "V2*R2T3/R3T2", "R2T4/V2", "V2*R2T4/R4T2"),
     nm_name = c("KA", "CL", "Q3", "V2", "V3", "Q4", "V4"),
     cmt = 3,
     oral = TRUE
@@ -274,6 +274,7 @@ subroutine.nm_generic <- function(m, advan = NA, trans = 1, recursive = TRUE) {
   }
 
   if (new_advan %in% ode_advans) { ## first to ADVAN5
+    ## converting to advan 5 should preserve the parameterisation of the original model
     m <- m %>% subroutine(advan = 5)
     old_advan <- advan(m)
     old_trans <- trans(m)
@@ -288,95 +289,54 @@ subroutine.nm_generic <- function(m, advan = NA, trans = 1, recursive = TRUE) {
     .data$trans %in% old_trans
   )
 
+  if ("RXTY" %in% dold$base_name) {
+
+    ## get all variables in
+
+    txt <- text(m)
+    txt_words <- unlist(stringr::str_split(txt, stringr::boundary("word")))
+    vars <- unique(txt_words[grepl("^K([0-9]+)T?([0-9]+)$", txt_words)])
+
+    # tv_vars <- m %>% grab_variables("\\bTV\\w*?\\b")
+    # vars <- gsub("TV", "", tv_vars)
+
+    ## get nm_name and base_name from vars
+    dold0 <- data.frame(nm_name = vars)
+    dold0$base_name <- gsub("K([0-9]+)T?([0-9]+)", "R\\1T\\2", dold0$nm_name)
+
+    ## create a new dold based on this
+    dold_names <- names(dold)
+    dold <- merge(
+      dold[1, names(dold)[!names(dold) %in% c("base_name","nm_name")]],
+      dold0
+    )
+
+    dold <- dplyr::as_tibble(dold[, dold_names])
+
+  }
+
   dnew <- dp %>% dplyr::filter(
     .data$advan %in% new_advan,
     .data$trans %in% new_trans
   )
 
+  ## if one of them is KXY type and other isn't, can use the other to normalize this
+  ## if both are KXY type then no parameter transformation is needed
+
+  ## use these to modify dold to be more specific
+
   #if (new_advan %in% 6) stop("not yet implemented")
 
   if (new_advan %in% c(linear_advans, ode_advans)) {
 
-    ## grab all existing variables.
-    tv_vars <- m %>% grab_variables("\\bTV\\w*?\\b")
-    vars <- gsub("TV", "", tv_vars)
-
-    dtrans_detect <- dp %>%
-      dplyr::group_by(.data$advan, .data$trans) %>%
-      dplyr::summarise(
-        match_trans = all(.data$nm_name %in% vars),#all(vars %in% .data$nm_name),
-        n_params = length(.data$nm_name)
-      ) %>%
-      dplyr::filter(.data$match_trans)
-
-    if (nrow(dtrans_detect) < 0) {
-      stop("can't match $PK parameters to an available advan/trans combo (available_trans)", call. = FALSE)
-    }
-
-    dtrans_detect <- dtrans_detect[
-      dtrans_detect$n_params %in% max(dtrans_detect$n_params),
-      ] ## largest no. of parameters is going to be best
-    dtrans_detect <- dtrans_detect[1, ] ## should be only 1 left
-
-    old_matched_trans <- dtrans_detect$trans
-    old_matched_advan <- dtrans_detect$advan
-
-    ## redefine dnew based on dold
-    dnew <- dp %>% dplyr::filter(
-      .data$advan %in% old_matched_advan,
-      .data$trans %in% old_matched_trans
-    )
-
+    ## replace KXYs in dnew with whatever is in dold
+    ## can assume that dold is trans 1 and compatible
+    dnew <- dold
     dnew$advan <- new_advan
     dnew$trans <- new_trans
 
-    ## dnew$nm_name will be used to rename/create new parameters
-    ##  in the case of no relation (no transform needed)
-    ##    a simple rename will be sufficient
-    ##  in case of a relation (e.g. CL)
-    ##    want to keep TVCL = ....
-    ##    but just add a K2T0 = CL/V
+    dnew$nm_name <- gsub("R", "K",dnew$base_name)
 
-    if (!old_advan %in% c(linear_advans, ode_advans)) {
-      ## not needed if already KXTY type advan
-      for (i in seq_len(nrow(dold))) {
-        if (!is.na(dold$inv_relation[i])) {
-          inv_relation <- dold$inv_relation[i]
-          for (j in seq_len(nrow(dold))) {
-            inv_relation <- gsub(dold$base_name[j], dold$nm_name[j], inv_relation)
-          }
-          definition_to_add <- paste0(
-            gsub("R", "K", dold$base_name[i]), " = ", inv_relation, "\n"
-          )
-          m <- m %>%
-            target("PK") %>%
-            text(definition_to_add, append = TRUE) %>%
-            untarget()
-
-        } else {
-          dnew$nm_name[i] <- gsub("R", "K", dnew$base_name[i])
-        }
-
-
-        # else {
-        #   definition_to_add <- paste0(
-        #     gsub("R", "K", dold$base_name[i]), " = ", dold$nm_name[i], "\n"
-        #   )
-        # }
-
-        # m <- m %>%
-        #   target("PK") %>%
-        #   text(definition_to_add, append = TRUE) %>%
-        #   untarget()
-      }
-    }
-  }
-
-
-  if (old_advan %in% c(linear_advans, ode_advans)) {
-    dold <- dnew
-    dold$advan <- old_advan
-    dold$trans <- old_trans
   }
 
   thetas <- raw_init_theta(m)
@@ -434,27 +394,41 @@ subroutine.nm_generic <- function(m, advan = NA, trans = 1, recursive = TRUE) {
       new_theta <-
         try(with(theta_vec, eval(relation_expr)), silent = TRUE)
 
-      m <- m %>% rename_parameter_(
-        new_name = di$nm_name.y,
-        name = di$nm_name.x
-      )
+      if (new_advan %in% c(linear_advans, ode_advans) & !is.na(relation)) {
+        ## if going to DES or advan 5 type advan, assume no reparameterisation
+        ## just add K2T0 = CL/V2 definition to bottom of $PK
+        add_to_dollar_PK <- paste(di$nm_name.y, "=", relation)
 
-      ## modify initials
-      if (!inherits(new_theta, "try-error")) {
-        ithetai <- init_theta(m)
-        ithetai$init[ithetai$name == di$nm_name.y] <- new_theta
-        if (ithetai$trans[ithetai$name == di$nm_name.y] %in% "LOG") {
-          ithetai$init[ithetai$name == di$nm_name.y] <- log(new_theta)
-        }
-        if (ithetai$trans[ithetai$name == di$nm_name.y] %in% c("LOGIT")) {
-          p <- new_theta / 100
+        m <- m %>% dollar("PK", add_to_dollar_PK, append = TRUE)
+
+      } else {
+
+        ## if not going to $DES or advan 5 type, assume reparameterisation
+        ## just rename the parameter
+
+        m <- m %>% rename_parameter_(
+          new_name = di$nm_name.y,
+          name = di$nm_name.x
+        )
+
+        ## modify initials
+        if (!inherits(new_theta, "try-error")) {
+          ithetai <- init_theta(m)
+          ithetai$name <- gsub("^TV(.*)", "\\1", ithetai$name) ## remove TV notation
+          ithetai$init[ithetai$name == di$nm_name.y] <- new_theta
+          if (ithetai$trans[ithetai$name == di$nm_name.y] %in% "LOG") {
+            ithetai$init[ithetai$name == di$nm_name.y] <- log(new_theta)
+          }
+          if (ithetai$trans[ithetai$name == di$nm_name.y] %in% c("LOGIT")) {
+            p <- new_theta / 100
+            ithetai$init[ithetai$name == di$nm_name.y] <-
+              log(p / (1 - p))
+          }
           ithetai$init[ithetai$name == di$nm_name.y] <-
-            log(p / (1 - p))
-        }
-        ithetai$init[ithetai$name == di$nm_name.y] <-
-          signif(ithetai$init[ithetai$name == di$nm_name.y], 5)
+            signif(ithetai$init[ithetai$name == di$nm_name.y], 5)
 
-        m <- m %>% init_theta(ithetai)
+          m <- m %>% init_theta(ithetai)
+        }
       }
     }
     if (strategy == "add_new") {
@@ -481,7 +455,11 @@ subroutine.nm_generic <- function(m, advan = NA, trans = 1, recursive = TRUE) {
   ##########################
 
   if (new_advan %in% c(linear_advans, ode_advans)) {
+
+    ## find no. of compartments needed.
+
     R_regex <- "R([0-9]+)T([0-9]+)"
+    #R_names <- thetas$name[grepl(R_regex, thetas$name)]
     R_names <- dnew$base_name[grepl(R_regex, dnew$base_name)]
 
     comp_from <- gsub(R_regex, "\\1", R_names)
@@ -540,16 +518,17 @@ subroutine.nm_generic <- function(m, advan = NA, trans = 1, recursive = TRUE) {
 
       d_param <- data.frame(
         name = basic_param_names,
+        term = paste0(basic_param_names, "*A(" ,comp_from, ")"),
         comp_from,
         comp_to
       )
 
       rhs <- sapply(seq_len(n_current_compartments), function(comp) {
         positive_terms <-
-          paste(d_param$name[d_param$comp_to %in% comp], collapse = " + ")
+          paste(d_param$term[d_param$comp_to %in% comp], collapse = " + ")
 
         negative_terms <-
-          paste(d_param$name[d_param$comp_from %in% comp], collapse = " -")
+          paste(d_param$term[d_param$comp_from %in% comp], collapse = " -")
 
         if (nchar(negative_terms) > 0) negative_terms <- paste0("-", negative_terms)
 
@@ -581,7 +560,11 @@ subroutine.nm_generic <- function(m, advan = NA, trans = 1, recursive = TRUE) {
     }
   }
 
-  ## update $DES if present
+  ## trim white space lines
+
+  txt <- text(m)
+  trimmed_txt <- strsplit(gsub("\n{3,}", "\n\n", paste(txt, collapse = "\n")), "\n")[[1]]
+  m <- m %>% ctl_contents_simple(trimmed_txt)
 
   m
 }
@@ -710,7 +693,7 @@ tol.nm_generic <- function(m, text) {
     if (is_single_na(sub_text)) {
       return(NA_integer_)
     }
-    tol_match_text <- ".*\\bTOL([0-9]+)\\b.*"
+    tol_match_text <- ".*\\bTOL\\s*=?\\s*([0-9]+)\\b.*"
     tol_match <- grepl(tol_match_text, sub_text)
     tol <- gsub(tol_match_text, "\\1", sub_text[tol_match])
     tol <- as.integer(tol)
@@ -722,9 +705,9 @@ tol.nm_generic <- function(m, text) {
 
   if (any(grepl("TOL", text(m)))) { ## TOL already exists
     if (!is.na(text)) {
-      m <- m %>% gsub_ctl("TOL[0-9]+", paste0("TOL", text))
+      m <- m %>% gsub_ctl("(TOL\\s*=?\\s*)[0-9]+", paste0("\\1", text))
     } else {
-      m <- m %>% gsub_ctl("TOL[0-9]+", "")
+      m <- m %>% gsub_ctl("TOL=?[0-9]+", "")
     }
   } else {
     if (!is.na(text)) {

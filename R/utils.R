@@ -99,6 +99,71 @@ rlang::.data
   as_nm_list(lapply(seq_along(lhs), function(i) rhs[[i]](lhs[[i]])))
 }
 
+#' @name map_nm
+#' @rdname map_nm
+#' @title A purrr-like looping function over nm objects
+#' 
+#' @description
+#'
+#' `r lifecycle::badge("experimental")`
+#' 
+#' Loop over an nm object when a vectorized operation is not available.
+#' 
+#' @param .x An nm object.
+#' @param .y An optional nm object.
+#' @inheritParams purrr::map2
+#' @inheritParams purrr::pmap
+#' 
+#' @return A modified nm object.
+#' 
+#' @examples 
+#' 
+#' # create example object m1 from package demo files
+#' exdir <- system.file("extdata", "examples", "theopp", package = "NMproject")
+#' m1 <- new_nm(run_id = "m1", 
+#'              based_on = file.path(exdir, "Models", "ADVAN2.mod"),
+#'              data_path = file.path(exdir, "SourceData", "THEOPP.csv"))
+#'                                        
+#' ## vectorized run
+#' m1 %>% child(1:3) %>% run_id(paste0(run_id(.), "modified"))
+#'   
+#' m1 %>% child(1:3) %>% 
+#'   map_nm(~ .x %>% run_id(paste0(run_id(.), "modified")))
+#'   
+#' 
+#' 
+#' @export
+
+map_nm <- function(.x, .f, ...) {
+  if (!requireNamespace("purrr")) stop("install purrr")
+  res <- purrr::map(.x, .f, ...)
+  as_nm_list(res)
+}
+
+#' @rdname map_nm
+#' @export
+map2_nm <- function(.x, .y, .f, ...) {
+  if (!requireNamespace("purrr")) stop("install purrr")
+  res <- purrr::map2(.x, .y, .f, ...)
+  as_nm_list(res)
+}
+
+#' @rdname map_nm
+#' @export
+imap_nm <- function(.x, .f, ...) {
+  if (!requireNamespace("purrr")) stop("install purrr")
+  res <- purrr::imap(.x, .f, ...)
+  as_nm_list(res)
+}
+
+#' @rdname map_nm
+#' @export
+pmap_nm <- function(.l, .f, ...) {
+  if (!requireNamespace("purrr")) stop("install purrr")
+  res <- purrr::pmap(.l, .f, ...)
+  as_nm_list(res)
+}
+
 #' Compute path relative to reference
 #'
 #' @param path Path of desired directory or file.
@@ -259,8 +324,7 @@ na.locf <- function(x) {
 #'
 #' @param x Boolean expression to evaluate.
 #' @param timeout Numeric. Maximum time (in seconds) to wait.
-#' @param interval Numeric. Number of seconds (default=`1`) to wait before
-#'   rechecking.
+#' @param interval Numeric. The polling interval in seconds (default=`1`).
 #'
 #' @return Invisibly returns `TRUE` indicating value of `x` after waiting for
 #'   `x` to be `TRUE`.
@@ -288,7 +352,6 @@ na.locf <- function(x) {
 wait_for <- function(x, timeout = NULL, interval = 1) {
   x <- substitute(x)
   start.time <- Sys.time()
-  diff.time <- 0
   while (!eval(x, envir = parent.frame())) {
     diff.time <- difftime(Sys.time(), start.time, units = "secs")
     if (!is.null(timeout)) {
@@ -297,7 +360,7 @@ wait_for <- function(x, timeout = NULL, interval = 1) {
         return(invisible(FALSE))
       }
     }
-    Sys.sleep(1)
+    Sys.sleep(interval)
   }
   invisible(TRUE)
 }

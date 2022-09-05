@@ -29,13 +29,11 @@ plot_iter_data <- function(r, trans = TRUE, skip = 0, yvar = "OBJ") {
 
 #' @export
 plot_iter_data.default <- function(r, trans = TRUE, skip = 0, yvar = "OBJ") {
-  if (!requireNamespace("reshape2", quietly = TRUE)) {
-    stop("reshape2 needed for this function to work. Please install it.",
-      call. = FALSE
-    )
-  }
 
-  d <- read_ext(r = r, trans = trans)
+  ext_file_path <- r %>% nm_output_path("ext")
+  if (!file.exists(ext_file_path)) usethis::ui_stop("psn.ext file exist (yet)")
+  
+  d <- read_ext0(ext_file_path)
 
   d <- d[d$TYPE %in% c("ITER", "BURN"), ]
   d$EST.NAME2 <- paste("$EST", d$EST.NO, ":", d$EST.NAME, sep = " ")
@@ -73,13 +71,55 @@ plot_iter_data.default <- function(r, trans = TRUE, skip = 0, yvar = "OBJ") {
   d <- do.call(rbind, d)
 
   par.names <- c("OBJ", names(d)[names(d) %in% par.names])
+  
+  d <- d %>% tidyr::pivot_longer(par.names, names_to = "variable", values_to = "value")
+  #d <- tidyr::gather(d, key = "variable", value = "value", par.names)
+  d$variable <- factor(d$variable, levels = par.names)
+  
+  if (trans) {
+    p_info <- param_info2(r)
+    p_info <- p_info[, c("name", "parameter", "trans", "unit")]
+    p_info$variable <- p_info$parameter
+    p_info$parameter <- NULL
+    p_info$type <- NA
+    p_info$type[grepl("THETA[0-9]+", p_info$variable)] <- "THETA"
+    p_info$type[grepl("OMEGA", p_info$variable)] <- "OMEGAVAR"
+    p_info$type[grepl("SIGMA", p_info$variable)] <- "SIGMA"
+    
+    ## similar to coef
+    p_info$unit[p_info$trans %in% "LOGIT"] <- "%"
+    p_info$unit[p_info$trans %in% "LOG" & p_info$type %in% "OMEGAVAR"] <- "CV%"
+    p_info$unit[p_info$type %in% "SIGMA"] <- "SD"
+    
+    p_info$name <- paste0(p_info$name, " [", p_info$unit, "]")
+    
+    d <- dplyr::as_tibble(dplyr::left_join(d, p_info))
+    d$orig_name <- d$variable
+    d$variable[!is.na(d$name)] <- d$name[!is.na(d$name)] 
+    
+    par_names <- c("OBJ", p_info$name)
+    
+    d$variable <- factor(d$variable, levels = par_names)
+    
+    d <- d %>% dplyr::arrange(.data$EST.NO, .data$variable, .data$ITERATION)
 
-  dl <- reshape2::melt(
-    data = d,
-    measure.vars = par.names
-  )
-
-  dl
+    ## similar code to coef
+    th <- d$type %in% "THETA"
+    om <- d$type %in% "OMEGAVAR"
+    sg <- d$type %in% "SIGMA"
+    
+    ## LOG
+    d$value[d$trans %in% "LOG" & th] <- exp(d$value[d$trans %in% "LOG" & th])
+    ## LOGIT
+    d$value[d$trans %in% "LOGIT" & th] <- 100 * 1 / (1 + exp(-d$value[d$trans %in% "LOGIT" & th]))
+    ## OMEGA LOG
+    d$value[d$trans %in% "LOG" & om] <- 100 * sqrt(exp(d$value[d$trans %in% "LOG" & om]) - 1)
+    ## SIGMA
+    d$value[d$type %in% "SIGMA"] <- sqrt(d$value[d$type %in% "SIGMA"])
+    
+  }
+  
+  d
 }
 
 #' @export

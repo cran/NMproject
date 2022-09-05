@@ -1,7 +1,4 @@
-#' @name run_nm
-#' @rdname run_nm
-#'
-#' @title Run NONMEM jobs
+#' @title Run NONMEM jobs (single job)
 #'
 #' @description
 #'
@@ -22,6 +19,9 @@
 #'   contents with cache?
 #' @param cache_ignore_data Logical (default = `FALSE`). Should check dataset with
 #'   cache?
+#' @param return_cmd_only Logical. Instead of running `cmd`, return the command
+#'   information in the form of a `tibble`.  This is intended for use in
+#'   `run_nm()` batch submission.
 #'
 #' @details In grid environment it is recommended to run [nm_tran()] via the
 #'   RStudio 'Addin' prior to executing this code.
@@ -31,7 +31,7 @@
 #'
 #'   For vector `nm` objects of length more than 1, all runs will be launched at
 #'   the same time.  This could overwhelm resources if not in a grid
-#'   environment.  In this case see [run_nm_batch()] for batched execution of a
+#'   environment.  In this case see [run_nm()] for batched execution of a
 #'   vector valued `nm` object.
 #'
 #' @return `m` with `job_info` fields populated.
@@ -51,20 +51,25 @@
 #'   run_nm()
 #' }
 #' @export
-run_nm <- function(m,
-                   ignore.stdout = TRUE, ignore.stderr = TRUE,
+#' @keywords internal
+#' 
+run_nm_single <- function(m,
+                   ignore.stdout = FALSE, ignore.stderr = FALSE,
                    quiet = getOption("quiet_run"), intern = getOption("intern"),
                    force = FALSE,
-                   cache_ignore_cmd = FALSE, cache_ignore_ctl = FALSE, cache_ignore_data = FALSE) {
-  UseMethod("run_nm")
+                   cache_ignore_cmd = FALSE, cache_ignore_ctl = FALSE, cache_ignore_data = FALSE,
+                   return_cmd_only = FALSE) {
+  UseMethod("run_nm_single")
 }
 
 #' @export
-run_nm.nm_generic <- function(m,
-                              ignore.stdout = TRUE, ignore.stderr = TRUE,
+run_nm_single.nm_generic <- function(m,
+                              ignore.stdout = FALSE, ignore.stderr = FALSE,
                               quiet = getOption("quiet_run"), intern = getOption("intern"),
                               force = FALSE,
-                              cache_ignore_cmd = FALSE, cache_ignore_ctl = FALSE, cache_ignore_data = FALSE) {
+                              cache_ignore_cmd = FALSE, cache_ignore_ctl = FALSE, cache_ignore_data = FALSE,
+                              return_cmd_only = FALSE) {
+
   if (is.na(m)) {
     return(m)
   }
@@ -108,16 +113,24 @@ run_nm.nm_generic <- function(m,
         current_checksums <- current_checksums[keep]
       }
 
-      ## ignore names
-      names(current_checksums) <- NULL
-      names(run_cache_disk$checksums) <- NULL
+      ## ignore names - why? it shouldn't make a difference, removing to see effect...
+      #names(current_checksums) <- NULL
+      #names(run_cache_disk$checksums) <- NULL
+      
+      matched <- sapply(names(current_checksums), function(i) {
+        identical(run_cache_disk$checksums[i], current_checksums[i])
+      })
+      
+      for (mis_match in names(matched)[!matched]) {
+        usethis::ui_info("{mis_match} update detected. Rerunning...")
+      }
 
-      matched <- identical(run_cache_disk$checksums, current_checksums)
-      if (matched) {
+      #matched <- identical(run_cache_disk$checksums, current_checksums)
+      if (all(matched)) {
         if (!is_finished(m)) {
-          warning("run was previously executed but has is_finished() status = FALSE")
+          usethis::ui_warn("run was previously executed but has {usethis::ui_code('is_finished()')} status as FALSE")
         }
-        message("rebuilding run from cache... use run_nm(force = TRUE) to override")
+        usethis::ui_info("rebuilding run from cache... use {usethis::ui_code('run_nm(force = TRUE)')} to override")
         ## update object and return
         m <- m %>% executed(TRUE)
         m <- m %>% job_info(run_cache_disk$job_info)
@@ -155,10 +168,17 @@ run_nm.nm_generic <- function(m,
   wipe_run(m) ## this will check for "ask" or "overwrite"
   kill_job(m)
 
+  if (return_cmd_only) {
+    return(dplyr::tibble(
+      cmd = cmd(m),
+      run_in = run_in(m)
+    ))
+  }
+  
   message(paste0("Running: ", type(m), ":", ctl_path(m)))
   stdout0 <- system_nm(
     cmd = cmd(m), dir = run_in(m), wait = FALSE,
-    ignore.stdout = FALSE, ignore.stderr = FALSE,
+    ignore.stdout = ignore.stdout, ignore.stderr = ignore.stderr,
     intern = intern
   )
 
@@ -180,31 +200,79 @@ run_nm.nm_generic <- function(m,
 }
 
 #' @export
-run_nm.nm_list <- Vectorize_nm_list(run_nm.nm_generic, SIMPLIFY = FALSE, invisible = TRUE)
+run_nm_single.nm_list <- Vectorize_nm_list(run_nm_single.nm_generic, SIMPLIFY = FALSE, invisible = TRUE)
 
-#' @rdname run_nm
-#' @param threads Numeric.  Number of threads to run concurrently.
-#' @param ... Additional arguments passed to `run_nm()`.
+#' @title Run NONMEM jobs
+#' @description
 #'
-#' @details `run_nm_batch` is a variant of `run_nm()` containing a `threads` argument that will submit [run_nm()]'s in
-#' batches and wait for them to complete. If you need all the runs to complete ensure you use a
-#'   [wait_finish()] statement afterwards as R console will only be
-#'   blocked for until the last batch has been submitted which will be before
-#'   all runs have completed
+#' `r lifecycle::badge("stable")`
+#' 
+#' Run nm objects.  Uses `system_nm()` to submit the `cmd()` value of object.
+#' 
+#' @inheritParams run_nm_single
+#' @param threads Numeric.  Number of jobs to run concurrently (default =
+#'   `Inf`).  Will block the console until all jobs are submitted.
+#'
+#' @details In grid environment it is recommended to run [nm_tran()] via the
+#'   RStudio 'Addin' prior to executing this code.
+#'
+#'   By default, when highlighting code and evaluating it via an RStudio app,
+#'   `run_nm()` will not execute and will just return the `nm` object.
+#'
+#'   For vector `nm` objects of length more than 1, all runs will be launched at
+#'   the same time with a gap of `getOption("job_time_spacing")` seconds (default = 0).
+#'   This could overwhelm resources if not in a grid environment.
+#'
+#'   `run_nm` is a variant of `run_nm_single()` containing a `threads` argument
+#'   that will submit [run_nm()]'s in batches and wait for them to complete. If
+#'   you need all the runs to complete ensure you use a [wait_finish()]
+#'   statement afterwards as R console will only be blocked for until the last
+#'   batch has been submitted which will be before all runs have completed.
+#'
+#'   The `job_time_spacing` argument
+#'
+#' @return `m` with `job_info` fields populated.
+#'   
+#' @seealso [nm_tran()]
+#'
+#' @examples
+#' ## requires NONMEM to be installed
+#' \dontrun{
+#' m1 <- new_nm(
+#'   run_id = "m1",
+#'   based_on = "staging/Models/ADVAN2.mod",
+#'   data_path = "DerivedData/data.csv"
+#' ) %>%
+#'   cmd("execute {ctl_name} -dir={run_dir}") %>%
+#'   fill_input() %>%
+#'   run_nm()
+#' }
 #' @export
 
-run_nm_batch <- function(m, threads = 10, ...) {
+run_nm <- function(m, threads = Inf, ignore.stdout = FALSE,
+                   quiet = getOption("quiet_run"), intern = getOption("intern"),
+                   force = FALSE,
+                   cache_ignore_cmd = FALSE, cache_ignore_ctl = FALSE, cache_ignore_data = FALSE) {
+  if (any(duplicated(ctl_path(m)))) usethis::ui_stop("Detecting multiple runs with same run_id and run_in locations")
   runs_remaining <- seq_along(m)
   while (length(runs_remaining) > 0) {
     n_to_take <- min(threads, length(runs_remaining))
     runs_to_run <- runs_remaining[seq_len(n_to_take)]
     m_sub <- m[runs_to_run]
-    run_nm(m_sub, ...)
+    res <- run_nm_single(m_sub, 
+                         ignore.stdout = ignore.stdout, ignore.stderr = ignore.stdout,
+                         quiet = quiet, intern = intern,
+                         force = force,
+                         cache_ignore_cmd = cache_ignore_cmd, cache_ignore_ctl = cache_ignore_ctl, cache_ignore_data = cache_ignore_data)
+    job_time_spacing <- getOption("job_time_spacing")
+    if (is.null(job_time_spacing)) job_time_spacing <- 0
+    Sys.sleep(job_time_spacing) 
     runs_remaining <- setdiff(runs_remaining, runs_to_run)
     if (length(runs_remaining) > 0) wait_finish(m_sub)
   }
-  m
+  invisible(m)
 }
+
 
 #' Wipe previous run files
 #'
@@ -576,22 +644,27 @@ clean_tempfiles.nm_list <- function(object = ".", output_loc = c("run_dir", "bas
 #' execution.
 #'
 #' @param m An nm object.
+#' @param path Optional path to save the control file.
 #' @param force Logical (default = `FALSE`), force write, don't ask.
 #'
 #' @return Invisibly returns `m` unmodified.
 #'
 #' @keywords internal
 #' @export
-write_ctl <- function(m, force = FALSE) {
+write_ctl <- function(m, path = NA_character_, force = FALSE) {
   UseMethod("write_ctl")
 }
 
 #' @export
-write_ctl.nm_generic <- function(m, force = FALSE) {
-  ctl_name <- ctl_path(m)
+write_ctl.nm_generic <- function(m, path = NA_character_, force = FALSE) {
   ctl_ob <- ctl_contents(m) %>% ctl_character()
-  dir_name <- run_in(m)
-
+  if (is.na(path)) {
+    ctl_name <- ctl_path(m)
+    dir_name <- run_in(m)    
+  } else {
+    ctl_name <- basename(path)
+    dir_name <- dirname(path)
+  }
   if (!file.exists(dir_name)) {
     dir.create(dir_name, showWarnings = FALSE, recursive = TRUE)
   }

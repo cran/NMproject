@@ -73,6 +73,8 @@ nm_create_analysis_project <- function(path, dirs = nm_default_dirs(),
                                        use_renv = FALSE, readme_template_package = "NMproject",
                                        ...) {
 
+  if (!requireNamespace("devtools")) stop("install devtools")
+    
   ## need to normalize path because usethis has different
   ## home directory, so use use R normalizePath to remove abiguity
 
@@ -105,6 +107,7 @@ nm_create_analysis_project <- function(path, dirs = nm_default_dirs(),
   }
 
   usethis::create_project(path = path, rstudio = TRUE, open = FALSE)
+  ## left over steps = use_rstudio() - this will be done with use_rstudio_package() below
 
   current_proj <- try(usethis::proj_get(), silent = TRUE)
   if (inherits(current_proj, "try-error")) {
@@ -112,6 +115,10 @@ nm_create_analysis_project <- function(path, dirs = nm_default_dirs(),
   }
   usethis::proj_set(path)
   on.exit(usethis::proj_set(current_proj), add = TRUE)
+  
+  ## needed to set .Rbuildignore and *.Rproj to package types
+  unlink(file.path(path, "*.Rproj"))
+  use_rstudio_package(name)
 
   write("This directory is for .R files containing R functions", file.path(path, "R", "Readme.txt"))
   usethis::use_build_ignore(file.path("R", "Readme.txt"))
@@ -186,7 +193,14 @@ nm_create_analysis_project <- function(path, dirs = nm_default_dirs(),
 
   set_default_dirs_in_rprofile(file.path(folder, name, ".Rprofile"), dirs)
 
-  suppressMessages(devtools::build_readme(path = path))
+  tryCatch(
+    {
+      suppressMessages(devtools::build_readme(path = path))   
+    },
+    error = function(e) {
+      usethis::ui_info("skipping {usethis::ui_path('README.Rmd')} build")
+    }
+  )
 
   ## No R directory for simple package - advanced users needs to create this manually
   ##  This is because RStudio by default tries to save files in the R directory.
@@ -231,6 +245,29 @@ parse_dirs <- function(dirs){
   dirs <- as.list(dirs)
   dirs
 }
+
+## following is a copy of usethis::use_rstudio() but with is_package() set to TRUE
+use_rstudio_package <- function(project_name, line_ending = c("posix", "windows")) {
+  is_package <- TRUE
+  line_ending <- rlang::arg_match(line_ending)
+  line_ending <- c("posix" = "Posix", "windows" = "Windows")[[line_ending]]
+  
+  rproj_file <- paste0(project_name, ".Rproj")
+  new <- usethis::use_template(
+    "template.Rproj",
+    save_as = rproj_file,
+    data = list(line_ending = line_ending, is_pkg = is_package),
+    ignore = is_package
+  )
+  
+  usethis::use_git_ignore(".Rproj.user")
+  if (is_package) {
+    usethis::use_build_ignore(".Rproj.user")
+  }
+  
+  invisible(new)
+}
+
 
 #' @rdname git_hooks
 #' @name git_hooks
