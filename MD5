@@ -1,6 +1,6 @@
-194c9fa869125ee6769a507aafa2b4b5 *DESCRIPTION
+846fadb50bf5669a213b7a5aeb35600d *DESCRIPTION
 d243330f1a8235d3edbda105c7b5a7ba *NAMESPACE
-1bf0f45996f3789f821a900ae4a25d2b *NEWS.md
+6cf0d52604165f4a0118183d1ac3d150 *NEWS.md
 748236a01571312f0305eea94ae9eb62 *R/NMproject-options.R
 94e58f180e06c4c235dd6703d557fb1a *R/NMproject-package.R
 704481b222112986eda405ec29e400b3 *R/Vectorize.R
@@ -293,7 +293,7 @@ fd5f2011679cf4b492c83a658fca8026 *man/wipe_run.Rd
 70107054f260f8831a682b6ca80541f0 *man/write_ctl.Rd
 13f8a513d0ab17e43e26ab5365afdd19 *man/write_derived_data.Rd
 43a774de1029374d2e35cedc9d7251c1 *tests/testthat.R
-e9b7d743952e9522626c16633a032c0f *tests/testthat/test-basic.R
+2912f72d23b8efe99b5c3eba33a696d7 *tests/testthat/test-basic.R
 7663023b32e52727e98927e8a4bf6ced *tests/testthat/test-child.R
 03b6d43295d6fff6c118fd3449a2e4f8 *tests/testthat/test-manual_edit.R
 a3ffcc04ad0a5fb95bd58eb578015dfc *tests/testthat/test-new_nm.R
